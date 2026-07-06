@@ -23,17 +23,20 @@ import {
   Home,
   LayoutDashboard,
   Layers,
+  LogIn,
+  LogOut,
   Menu,
-  MessageSquare,
   ScrollText,
   Scale,
-  Shield,
   Upload,
+  UserCircle,
   Users,
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { useMemo } from "react";
-import { roleHome, roleLabel, useRole } from "../context/RoleContext";
+import { toast } from "sonner";
+import { useAuth } from "../context/AuthContext";
+import { roleHome, roleLabel } from "../context/RoleContext";
 import type { Role } from "../mock/types";
 
 interface NavItem {
@@ -43,13 +46,13 @@ interface NavItem {
 }
 
 const NAV_BY_ROLE: Record<Role, NavItem[]> = {
+  // Real public surfaces backed by the live API. The legacy ICP demo screens
+  // (/library, /compliance, /ai-assistant, …) are reachable by URL only — see
+  // INTEGRATION_NOTES.md D8.
   public: [
     { path: "/", label: "Home", icon: Home },
-    { path: "/library", label: "Library", icon: FileText },
-    { path: "/compliance", label: "Compliance", icon: Shield },
-    { path: "/verification", label: "Verification", icon: CheckCircle },
-    { path: "/ai-assistant", label: "AI Act Assistant", icon: MessageSquare },
     { path: "/registry", label: "Registry", icon: ScrollText },
+    { path: "/verification", label: "Verification", icon: CheckCircle },
   ],
   company: [
     { path: "/company", label: "Dashboard", icon: LayoutDashboard },
@@ -79,7 +82,7 @@ const ROLES: Role[] = ["public", "company", "sub_admin", "admin"];
 export default function Header() {
   const navigate = useNavigate();
   const routerState = useRouterState();
-  const { role, setRole } = useRole();
+  const { role, setRole, isMock, status, logout } = useAuth();
 
   const currentPath = routerState.location.pathname;
   const navItems = NAV_BY_ROLE[role];
@@ -97,6 +100,12 @@ export default function Header() {
   const handleRoleChange = (next: Role) => {
     setRole(next);
     navigate({ to: roleHome[next] });
+  };
+
+  const handleSignOut = () => {
+    logout();
+    toast.success("Signed out");
+    navigate({ to: "/signin" });
   };
 
   return (
@@ -131,30 +140,62 @@ export default function Header() {
         </div>
 
         <div className="flex flex-shrink-0 items-center gap-2">
-          {/* Demo "View as" role switcher */}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Eye className="h-4 w-4" />
-                <span className="hidden sm:inline">View as:</span>
-                <span className="font-medium">{roleLabel[role]}</span>
-                <ChevronDown className="h-4 w-4 opacity-60" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuLabel>Preview as role</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              {ROLES.map((r) => (
-                <DropdownMenuCheckboxItem
-                  key={r}
-                  checked={role === r}
-                  onCheckedChange={() => handleRoleChange(r)}
-                >
-                  {roleLabel[r]}
-                </DropdownMenuCheckboxItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          {isMock ? (
+            /* Demo "View as" role switcher (mock mode only) */
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Eye className="h-4 w-4" />
+                  <span className="hidden sm:inline">View as:</span>
+                  <span className="font-medium">{roleLabel[role]}</span>
+                  <ChevronDown className="h-4 w-4 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Preview as role</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                {ROLES.map((r) => (
+                  <DropdownMenuCheckboxItem
+                    key={r}
+                    checked={role === r}
+                    onCheckedChange={() => handleRoleChange(r)}
+                  >
+                    {roleLabel[r]}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : status === "authenticated" ? (
+            /* Real account menu */
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <UserCircle className="h-4 w-4" />
+                  <span className="font-medium">{roleLabel[role]}</span>
+                  <ChevronDown className="h-4 w-4 opacity-60" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuLabel>Signed in</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleSignOut} className="gap-2">
+                  <LogOut className="h-4 w-4" />
+                  Sign out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : (
+            /* Real, signed out */
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={() => navigate({ to: "/signin" })}
+            >
+              <LogIn className="h-4 w-4" />
+              Sign in
+            </Button>
+          )}
 
           {/* Mobile / medium nav */}
           <DropdownMenu>

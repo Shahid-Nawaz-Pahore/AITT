@@ -21,16 +21,19 @@ import { useNavigate } from "@tanstack/react-router";
 import { Settings, Trash2, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ApiError } from "../api/types";
+import { useAuth } from "../context/AuthContext";
 import {
   useAddSignerWallet,
   useGovernance,
   useRemoveSignerWallet,
   useSetGovernance,
-} from "../hooks/useMockData";
+} from "../hooks/data";
 import { fakeWallet } from "../mock/utils";
 
 export default function GovernanceSettingsPage() {
   const navigate = useNavigate();
+  const { isMock } = useAuth();
   const { data: gov, isLoading } = useGovernance();
   const setGovernance = useSetGovernance();
   const addSignerWallet = useAddSignerWallet();
@@ -50,23 +53,35 @@ export default function GovernanceSettingsPage() {
   const total = signerWallets.length;
 
   const handleRequiredChange = async (value: string) => {
-    await setGovernance.mutateAsync({ required: Number(value), total });
-    toast.success(`Threshold set to ${value}-of-${total}`);
+    try {
+      await setGovernance.mutateAsync({ required: Number(value), total });
+      toast.success(`Threshold set to ${value}-of-${total}`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not update threshold");
+    }
   };
 
   const handleAddWallet = async () => {
     const w = newWallet.trim();
     if (!w) return toast.error("Please enter or connect a wallet");
     if (signerWallets.includes(w)) return toast.error("That signer already exists");
-    await addSignerWallet.mutateAsync(w);
-    setNewWallet("");
-    toast.success("Signer added");
+    try {
+      await addSignerWallet.mutateAsync(w);
+      setNewWallet("");
+      toast.success("Signer added");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not add signer");
+    }
   };
 
   const handleRemoveWallet = async (wallet: string) => {
     if (total <= 1) return toast.error("At least one signer is required");
-    await removeSignerWallet.mutateAsync(wallet);
-    toast.success("Signer removed");
+    try {
+      await removeSignerWallet.mutateAsync(wallet);
+      toast.success("Signer removed");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not remove signer");
+    }
   };
 
   return (
@@ -131,54 +146,76 @@ export default function GovernanceSettingsPage() {
         <Card className="h-fit">
           <CardHeader>
             <CardTitle className="text-lg">Authorised signers ({total})</CardTitle>
-            <CardDescription>Wallets allowed to approve proposals.</CardDescription>
+            <CardDescription>
+              {isMock
+                ? "Wallets allowed to approve proposals."
+                : "Signers are the active sub-admins. Manage them under Sub-Admins."}
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              {signerWallets.map((wallet) => (
-                <div
-                  key={wallet}
-                  className="flex items-center justify-between gap-2 rounded-lg border p-2"
-                >
-                  <span className="font-mono text-xs break-all">{wallet}</span>
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 flex-shrink-0 text-destructive hover:text-destructive"
-                    onClick={() => handleRemoveWallet(wallet)}
-                    disabled={total <= 1}
+              {signerWallets.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No active signers yet — activate a sub-admin to add one.
+                </p>
+              ) : (
+                signerWallets.map((wallet) => (
+                  <div
+                    key={wallet}
+                    className="flex items-center justify-between gap-2 rounded-lg border p-2"
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+                    <span className="font-mono text-xs break-all">{wallet}</span>
+                    {isMock && (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 flex-shrink-0 text-destructive hover:text-destructive"
+                        onClick={() => handleRemoveWallet(wallet)}
+                        disabled={total <= 1}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                ))
+              )}
             </div>
 
-            <div className="flex gap-2">
-              <Input
-                value={newWallet}
-                onChange={(e) => setNewWallet(e.target.value)}
-                placeholder="G…"
-                className="font-mono text-xs"
-              />
+            {isMock ? (
+              <div className="flex gap-2">
+                <Input
+                  value={newWallet}
+                  onChange={(e) => setNewWallet(e.target.value)}
+                  placeholder="G…"
+                  className="font-mono text-xs"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="flex-shrink-0 gap-2"
+                  onClick={() => setNewWallet(fakeWallet())}
+                >
+                  <Wallet className="h-4 w-4" />
+                  Connect
+                </Button>
+                <Button
+                  type="button"
+                  className="flex-shrink-0"
+                  onClick={handleAddWallet}
+                  disabled={addSignerWallet.isPending}
+                >
+                  Add
+                </Button>
+              </div>
+            ) : (
               <Button
-                type="button"
                 variant="outline"
-                className="flex-shrink-0 gap-2"
-                onClick={() => setNewWallet(fakeWallet())}
+                className="w-full"
+                onClick={() => navigate({ to: "/admin/experts" })}
               >
-                <Wallet className="h-4 w-4" />
-                Connect
+                Manage sub-admins
               </Button>
-              <Button
-                type="button"
-                className="flex-shrink-0"
-                onClick={handleAddWallet}
-                disabled={addSignerWallet.isPending}
-              >
-                Add
-              </Button>
-            </div>
+            )}
           </CardContent>
         </Card>
       </div>

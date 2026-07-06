@@ -8,7 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "@tanstack/react-router";
 import { ClipboardList, Clock, Inbox, RefreshCw } from "lucide-react";
 import { useMemo } from "react";
-import { useDocuments } from "../hooks/useMockData";
+import { useDocuments } from "../hooks/data";
 import type { DocItem, DocStatus } from "../mock/types";
 import { formatDate } from "../mock/utils";
 

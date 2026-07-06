@@ -11,31 +11,27 @@ import {
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Download, FileDown, FileText } from "lucide-react";
+import { useState } from "react";
 import { toast } from "sonner";
-import { useTemplates } from "../hooks/useMockData";
+import { downloadTemplate } from "../api/files";
+import { ApiError } from "../api/types";
+import { useTemplates } from "../hooks/data";
 import type { Template } from "../mock/types";
-import { downloadDummyFile } from "../mock/utils";
 
 export default function TemplatesPage() {
   const { data: templates, isLoading } = useTemplates();
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
-  const handleDownload = (template: Template) => {
-    const content = [
-      `${template.name}`,
-      "".padEnd(template.name.length, "="),
-      "",
-      template.description,
-      "",
-      "[ This is a blank AITT template. Fill in the sections below and submit",
-      "  it through the Company → Submit Document screen. ]",
-      "",
-      "1. Organisation details:",
-      "2. System / model description:",
-      "3. Compliance evidence:",
-      "4. Declarations:",
-    ].join("\n");
-    downloadDummyFile(template.file, content);
-    toast.success(`Downloading ${template.file}`);
+  const handleDownload = async (template: Template) => {
+    setDownloadingId(template.id);
+    try {
+      await downloadTemplate(template.id, template.file);
+      toast.success(`Downloading ${template.file}`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not download template");
+    } finally {
+      setDownloadingId(null);
+    }
   };
 
   return (
@@ -85,9 +81,10 @@ export default function TemplatesPage() {
                   variant="outline"
                   className="w-full gap-2"
                   onClick={() => handleDownload(template)}
+                  disabled={downloadingId === template.id}
                 >
                   <Download className="h-4 w-4" />
-                  Download .docx
+                  {downloadingId === template.id ? "Downloading…" : "Download .docx"}
                 </Button>
               </CardFooter>
             </Card>

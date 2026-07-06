@@ -7,7 +7,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "@tanstack/react-router";
 import { Plus, Scale, Settings, ShieldCheck } from "lucide-react";
-import { useGovernance, useProposals } from "../hooks/useMockData";
+import { useGovernance, useProposals } from "../hooks/data";
 import { PROPOSAL_TYPE_LABEL } from "../mock/labels";
 import type { Proposal } from "../mock/types";
 import { formatDate } from "../mock/utils";

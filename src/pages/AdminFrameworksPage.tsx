@@ -15,19 +15,23 @@ import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Textarea } from "@/components/ui/textarea";
+import { useNavigate } from "@tanstack/react-router";
 import { Layers, Pencil, Plus, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ApiError } from "../api/types";
+import { useAuth } from "../context/AuthContext";
 import {
   useAddFramework,
   useAddTemplate,
+  useCreateProposal,
   useFrameworks,
   useRemoveFramework,
   useRemoveTemplate,
   useTemplates,
   useUpdateFramework,
   useUpdateTemplate,
-} from "../hooks/useMockData";
+} from "../hooks/data";
 import type { Framework, Template } from "../mock/types";
 
 interface FrameworkForm {
@@ -43,6 +47,8 @@ interface TemplateForm {
 }
 
 export default function AdminFrameworksPage() {
+  const navigate = useNavigate();
+  const { isMock } = useAuth();
   const { data: frameworks, isLoading: fwLoading } = useFrameworks();
   const { data: templates, isLoading: tplLoading } = useTemplates();
   const addFramework = useAddFramework();
@@ -51,24 +57,51 @@ export default function AdminFrameworksPage() {
   const addTemplate = useAddTemplate();
   const updateTemplate = useUpdateTemplate();
   const removeTemplate = useRemoveTemplate();
+  const createProposal = useCreateProposal();
 
   const [fwForm, setFwForm] = useState<FrameworkForm | null>(null);
   const [tplForm, setTplForm] = useState<TemplateForm | null>(null);
   const [removeFw, setRemoveFw] = useState<Framework | null>(null);
   const [removeTpl, setRemoveTpl] = useState<Template | null>(null);
 
+  // Frameworks are read-only on the backend — changes go through framework_update
+  // governance proposals (D6). Mock mode keeps direct CRUD.
   const saveFramework = async () => {
     if (!fwForm) return;
     if (!fwForm.name.trim()) return toast.error("Please enter a name");
     const input = { name: fwForm.name.trim(), description: fwForm.description.trim() };
-    if (fwForm.id) {
-      await updateFramework.mutateAsync({ id: fwForm.id, input });
-      toast.success("Framework updated");
-    } else {
-      await addFramework.mutateAsync(input);
-      toast.success("Framework added");
+    try {
+      if (isMock) {
+        if (fwForm.id) {
+          await updateFramework.mutateAsync({ id: fwForm.id, input });
+          toast.success("Framework updated");
+        } else {
+          await addFramework.mutateAsync(input);
+          toast.success("Framework added");
+        }
+        setFwForm(null);
+        return;
+      }
+      const action = fwForm.id ? "update" : "create";
+      await createProposal.mutateAsync({
+        type: "framework_update",
+        title: `${fwForm.id ? "Update" : "Add"} framework: ${input.name}`,
+        description:
+          input.description ||
+          `Proposed ${action} of the "${input.name}" compliance framework.`,
+        payload: {
+          action,
+          name: input.name,
+          description: input.description,
+          ...(fwForm.id ? { frameworkId: fwForm.id } : {}),
+        },
+      });
+      setFwForm(null);
+      toast.success("Framework update proposed — pending multi-sig approval");
+      navigate({ to: "/admin/governance" });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not save framework");
     }
-    setFwForm(null);
   };
 
   const saveTemplate = async () => {
@@ -80,14 +113,18 @@ export default function AdminFrameworksPage() {
       description: tplForm.description.trim(),
       file: tplForm.file.trim(),
     };
-    if (tplForm.id) {
-      await updateTemplate.mutateAsync({ id: tplForm.id, input });
-      toast.success("Template updated");
-    } else {
-      await addTemplate.mutateAsync(input);
-      toast.success("Template added");
+    try {
+      if (tplForm.id) {
+        await updateTemplate.mutateAsync({ id: tplForm.id, input });
+        toast.success("Template updated");
+      } else {
+        await addTemplate.mutateAsync(input);
+        toast.success("Template added");
+      }
+      setTplForm(null);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not save template");
     }
-    setTplForm(null);
   };
 
   return (
@@ -106,13 +143,19 @@ export default function AdminFrameworksPage() {
 
         {/* Frameworks */}
         <TabsContent value="frameworks" className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-2">
+            {!isMock && (
+              <p className="text-sm text-muted-foreground">
+                Frameworks are governed on-chain — changes are submitted as
+                multi-signature proposals.
+              </p>
+            )}
             <Button
-              className="gap-2"
+              className="ml-auto gap-2"
               onClick={() => setFwForm({ name: "", description: "" })}
             >
               <Plus className="h-4 w-4" />
-              Add framework
+              {isMock ? "Add framework" : "Propose new framework"}
             </Button>
           </div>
           {fwLoading ? (
@@ -135,7 +178,7 @@ export default function AdminFrameworksPage() {
                   <div className="flex flex-shrink-0 gap-2">
                     <Button variant="outline" size="sm" className="gap-1" onClick={() => setFwForm(f)}>
                       <Pencil className="h-4 w-4" />
-                      Edit
+                      {isMock ? "Edit" : "Propose update"}
                     </Button>
                     <Button
                       variant="outline"
@@ -144,7 +187,7 @@ export default function AdminFrameworksPage() {
                       onClick={() => setRemoveFw(f)}
                     >
                       <Trash2 className="h-4 w-4" />
-                      Remove
+                      {isMock ? "Remove" : "Propose removal"}
                     </Button>
                   </div>
                 </div>
@@ -210,9 +253,19 @@ export default function AdminFrameworksPage() {
       <Dialog open={!!fwForm} onOpenChange={(open) => !open && setFwForm(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>{fwForm?.id ? "Edit framework" : "Add framework"}</DialogTitle>
+            <DialogTitle>
+              {isMock
+                ? fwForm?.id
+                  ? "Edit framework"
+                  : "Add framework"
+                : fwForm?.id
+                  ? "Propose framework update"
+                  : "Propose new framework"}
+            </DialogTitle>
             <DialogDescription>
-              Frameworks appear as compliance subjects when companies submit.
+              {isMock
+                ? "Frameworks appear as compliance subjects when companies submit."
+                : "This opens a framework_update governance proposal; the change applies once the signature threshold is reached."}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -243,7 +296,9 @@ export default function AdminFrameworksPage() {
             <Button variant="outline" onClick={() => setFwForm(null)}>
               Cancel
             </Button>
-            <Button onClick={saveFramework}>Save</Button>
+            <Button onClick={saveFramework} disabled={createProposal.isPending}>
+              {isMock ? "Save" : "Submit proposal"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -305,20 +360,45 @@ export default function AdminFrameworksPage() {
       <ConfirmDialog
         open={!!removeFw}
         onOpenChange={(open) => !open && setRemoveFw(null)}
-        title="Remove framework?"
+        title={isMock ? "Remove framework?" : "Propose framework removal?"}
         description={
-          <>
-            This removes <strong>{removeFw?.name}</strong> from the list of
-            compliance subjects.
-          </>
+          isMock ? (
+            <>
+              This removes <strong>{removeFw?.name}</strong> from the list of
+              compliance subjects.
+            </>
+          ) : (
+            <>
+              This opens a governance proposal to deactivate{" "}
+              <strong>{removeFw?.name}</strong>. It is removed once the signature
+              threshold is reached.
+            </>
+          )
         }
-        confirmLabel="Remove"
+        confirmLabel={isMock ? "Remove" : "Open proposal"}
         destructive
         onConfirm={async () => {
           if (!removeFw) return;
-          await removeFramework.mutateAsync(removeFw.id);
-          setRemoveFw(null);
-          toast.success("Framework removed");
+          const fw = removeFw;
+          try {
+            if (isMock) {
+              await removeFramework.mutateAsync(fw.id);
+              setRemoveFw(null);
+              toast.success("Framework removed");
+              return;
+            }
+            await createProposal.mutateAsync({
+              type: "framework_update",
+              title: `Deactivate framework: ${fw.name}`,
+              description: `Proposed deactivation of the "${fw.name}" compliance framework.`,
+              payload: { action: "deactivate", frameworkId: fw.id, name: fw.name },
+            });
+            setRemoveFw(null);
+            toast.success("Framework removal proposed — pending multi-sig approval");
+            navigate({ to: "/admin/governance" });
+          } catch (err) {
+            toast.error(err instanceof ApiError ? err.message : "Could not remove framework");
+          }
         }}
       />
 
@@ -336,9 +416,13 @@ export default function AdminFrameworksPage() {
         destructive
         onConfirm={async () => {
           if (!removeTpl) return;
-          await removeTemplate.mutateAsync(removeTpl.id);
-          setRemoveTpl(null);
-          toast.success("Template removed");
+          try {
+            await removeTemplate.mutateAsync(removeTpl.id);
+            setRemoveTpl(null);
+            toast.success("Template removed");
+          } catch (err) {
+            toast.error(err instanceof ApiError ? err.message : "Could not remove template");
+          }
         }}
       />
     </div>

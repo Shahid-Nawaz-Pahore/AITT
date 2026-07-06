@@ -14,6 +14,7 @@ import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate, useParams } from "@tanstack/react-router";
 import {
+  Ban,
   Check,
   CheckCircle2,
   ExternalLink,
@@ -23,25 +24,31 @@ import {
 } from "lucide-react";
 import { useMemo } from "react";
 import { toast } from "sonner";
+import { ApiError } from "../api/types";
+import { useAuth } from "../context/AuthContext";
 import {
   useDocument,
-  useExecuteProposal,
   useGovernance,
   useProposal,
+  useRejectProposal,
   useSignProposal,
-} from "../hooks/useMockData";
+} from "../hooks/data";
 import { PROPOSAL_TYPE_LABEL } from "../mock/labels";
-import { fakeTxHash, formatDate, shortHash } from "../mock/utils";
+import { formatDate, shortHash } from "../mock/utils";
 
 export default function ProposalDetailPage() {
   const navigate = useNavigate();
+  const { isMock } = useAuth();
   const params = useParams({ strict: false });
   const id = (params as { id?: string }).id;
   const { data: proposal, isLoading } = useProposal(id);
   const { data: gov } = useGovernance();
-  const { data: targetDoc } = useDocument(proposal?.targetRef);
+  // Only revocation proposals reference a document; avoid a 404 for other types.
+  const { data: targetDoc } = useDocument(
+    proposal?.type === "revocation" ? proposal.targetRef : undefined,
+  );
   const signProposal = useSignProposal();
-  const executeProposal = useExecuteProposal();
+  const rejectProposal = useRejectProposal();
 
   const wallets = useMemo(() => {
     const roster = gov?.signerWallets ?? [];
@@ -78,21 +85,25 @@ export default function ProposalDetailPage() {
   const reached = proposal.approvals >= proposal.threshold;
   const isPending = proposal.status === "pending";
   const progress = Math.min(100, (proposal.approvals / proposal.threshold) * 100);
-  const isRevocationTarget =
-    proposal.type === "revocation" && targetDoc != null;
+  const isRevocationTarget = proposal.type === "revocation" && targetDoc != null;
 
-  const handleSign = async (wallet: string) => {
-    await signProposal.mutateAsync({ id: proposal.id, wallet });
-    toast.success(`Signed as ${shortHash(wallet)} ✓`);
+  // wallet is only used by the mock demo (sign on behalf of a roster wallet).
+  const handleSign = async (wallet?: string) => {
+    try {
+      await signProposal.mutateAsync({ id: proposal.id, wallet });
+      toast.success(wallet ? `Signed as ${shortHash(wallet)} ✓` : "Signed ✓");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not sign proposal");
+    }
   };
 
-  const handleExecute = async () => {
-    await executeProposal.mutateAsync({ id: proposal.id, txHash: fakeTxHash() });
-    toast.success(
-      proposal.type === "revocation"
-        ? "Proposal executed — certificate revoked, anchored on-chain ✓"
-        : "Proposal executed and anchored on-chain ✓",
-    );
+  const handleReject = async () => {
+    try {
+      await rejectProposal.mutateAsync(proposal.id);
+      toast.success("Proposal rejected");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not reject proposal");
+    }
   };
 
   return (
@@ -142,7 +153,8 @@ export default function ProposalDetailPage() {
               <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-amber-700 dark:text-amber-300">
                 <ShieldAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
                 <p>
-                  When executed, this proposal revokes the target certificate.
+                  When the signature threshold is reached this proposal executes
+                  automatically and revokes the target certificate.
                 </p>
               </div>
             )}
@@ -160,21 +172,39 @@ export default function ProposalDetailPage() {
           <CardContent className="space-y-4">
             <Progress value={progress} />
             {isPending ? (
-              reached ? (
+              <>
+                {reached ? (
+                  <p className="text-center text-sm text-muted-foreground">
+                    Threshold reached — finalising on-chain…
+                  </p>
+                ) : (
+                  <p className="text-center text-sm text-muted-foreground">
+                    {proposal.threshold - proposal.approvals} more signature(s)
+                    needed — executes automatically at threshold.
+                  </p>
+                )}
+                {/* Real mode: sign as the current signer. Mock mode signs via the
+                    roster list below. */}
+                {!isMock && (
+                  <Button
+                    className="w-full gap-2"
+                    onClick={() => handleSign()}
+                    disabled={signProposal.isPending}
+                  >
+                    <PenLine className="h-4 w-4" />
+                    {signProposal.isPending ? "Signing…" : "Sign proposal"}
+                  </Button>
+                )}
                 <Button
-                  className="w-full gap-2"
-                  onClick={handleExecute}
-                  disabled={executeProposal.isPending}
+                  variant="outline"
+                  className="w-full gap-2 text-destructive hover:text-destructive"
+                  onClick={handleReject}
+                  disabled={rejectProposal.isPending}
                 >
-                  <CheckCircle2 className="h-4 w-4" />
-                  {executeProposal.isPending ? "Executing…" : "Execute proposal"}
+                  <Ban className="h-4 w-4" />
+                  {rejectProposal.isPending ? "Rejecting…" : "Reject"}
                 </Button>
-              ) : (
-                <p className="text-center text-sm text-muted-foreground">
-                  {proposal.threshold - proposal.approvals} more signature(s) needed
-                  to execute.
-                </p>
-              )
+              </>
             ) : (
               <div className="flex items-center justify-center gap-2 text-sm font-medium text-primary">
                 <CheckCircle2 className="h-4 w-4" />
@@ -190,39 +220,57 @@ export default function ProposalDetailPage() {
         <CardHeader>
           <CardTitle className="text-lg">Signers</CardTitle>
           <CardDescription>
-            Each authorised signer can approve once. (Demo: sign on behalf of any
-            signer.)
+            {isMock
+              ? "Each authorised signer can approve once. (Demo: sign on behalf of any signer.)"
+              : "Signatures recorded on-chain for this proposal."}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-2">
-          {wallets.map((wallet) => {
-            const signed = proposal.signers.includes(wallet);
-            return (
+          {isMock ? (
+            wallets.map((wallet) => {
+              const signed = proposal.signers.includes(wallet);
+              return (
+                <div
+                  key={wallet}
+                  className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <span className="font-mono text-xs break-all">{wallet}</span>
+                  {signed ? (
+                    <Badge className="border-transparent bg-primary text-primary-foreground gap-1 self-start sm:self-auto">
+                      <Check className="h-3 w-3" />
+                      Signed
+                    </Badge>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="gap-1 self-start sm:self-auto"
+                      onClick={() => handleSign(wallet)}
+                      disabled={!isPending || signProposal.isPending}
+                    >
+                      <PenLine className="h-4 w-4" />
+                      Sign
+                    </Button>
+                  )}
+                </div>
+              );
+            })
+          ) : proposal.signers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">No signatures yet.</p>
+          ) : (
+            proposal.signers.map((wallet) => (
               <div
                 key={wallet}
                 className="flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
               >
                 <span className="font-mono text-xs break-all">{wallet}</span>
-                {signed ? (
-                  <Badge className="border-transparent bg-primary text-primary-foreground gap-1 self-start sm:self-auto">
-                    <Check className="h-3 w-3" />
-                    Signed
-                  </Badge>
-                ) : (
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    className="gap-1 self-start sm:self-auto"
-                    onClick={() => handleSign(wallet)}
-                    disabled={!isPending || signProposal.isPending}
-                  >
-                    <PenLine className="h-4 w-4" />
-                    Sign
-                  </Button>
-                )}
+                <Badge className="border-transparent bg-primary text-primary-foreground gap-1 self-start sm:self-auto">
+                  <Check className="h-3 w-3" />
+                  Signed
+                </Badge>
               </div>
-            );
-          })}
+            ))
+          )}
         </CardContent>
       </Card>
     </div>

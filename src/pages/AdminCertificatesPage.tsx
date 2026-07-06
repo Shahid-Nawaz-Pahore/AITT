@@ -10,14 +10,13 @@ import { useNavigate } from "@tanstack/react-router";
 import { Award, BadgeCheck, Ban, Search } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ApiError } from "../api/types";
 import {
   useCreateProposal,
   useDocuments,
   useIssueCertificate,
-} from "../hooks/useMockData";
-import { DEMO_ADMIN } from "../mock/identity";
+} from "../hooks/data";
 import type { DocItem } from "../mock/types";
-import { fakeTxHash } from "../mock/utils";
 
 const ISSUABLE = ["approved", "approved_with_recommendations"];
 
@@ -45,8 +44,12 @@ export default function AdminCertificatesPage() {
 
   // Main-Admin direct action — issuance is NOT a vote (§3).
   const handleIssue = async (doc: DocItem) => {
-    await issueCertificate.mutateAsync({ docId: doc.id, txHash: fakeTxHash() });
-    toast.success(`Certificate issued for ${doc.filename} — anchored on-chain ✓`);
+    try {
+      await issueCertificate.mutateAsync({ docId: doc.id });
+      toast.success(`Certificate issued for ${doc.filename} — anchored on-chain ✓`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not issue certificate");
+    }
   };
 
   // Revocation is an exceptional action — it opens a multi-sig proposal,
@@ -54,15 +57,18 @@ export default function AdminCertificatesPage() {
   const handleRevoke = async () => {
     if (!revokeTarget) return;
     const doc = revokeTarget;
-    await createProposal.mutateAsync({
-      type: "revocation",
-      title: `Revoke certificate for ${doc.filename}`,
-      description: `Proposal to revoke the issued certificate for ${doc.company} (${doc.subject}). Requires multi-signature approval before it takes effect.`,
-      createdBy: DEMO_ADMIN,
-      targetRef: doc.id,
-    });
-    setRevokeTarget(null);
-    toast.success("Revocation proposal opened — pending multi-sig approval");
+    try {
+      await createProposal.mutateAsync({
+        type: "revocation",
+        title: `Revoke certificate for ${doc.filename}`,
+        description: `Proposal to revoke the issued certificate for ${doc.company} (${doc.subject}). Requires multi-signature approval before it takes effect.`,
+        targetRef: doc.id,
+      });
+      setRevokeTarget(null);
+      toast.success("Revocation proposal opened — pending multi-sig approval");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not open proposal");
+    }
   };
 
   const columns: Column<DocItem>[] = [

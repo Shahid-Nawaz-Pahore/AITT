@@ -21,7 +21,7 @@ import {
   useDocuments,
   useProposals,
   useSubAdmins,
-} from "../hooks/useMockData";
+} from "../hooks/data";
 import { PROPOSAL_TYPE_LABEL } from "../mock/labels";
 import type { DocItem } from "../mock/types";
 import { formatDate } from "../mock/utils";

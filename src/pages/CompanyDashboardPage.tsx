@@ -16,13 +16,15 @@ import {
   Upload,
 } from "lucide-react";
 import { useMemo } from "react";
-import { useCompanyDocuments } from "../hooks/useMockData";
+import { useAuth } from "../context/AuthContext";
+import { useCompanyDocuments } from "../hooks/data";
 import { DEMO_COMPANY } from "../mock/identity";
 import type { DocItem } from "../mock/types";
 import { formatDate } from "../mock/utils";
 
 export default function CompanyDashboardPage() {
   const navigate = useNavigate();
+  const { isMock } = useAuth();
   const { data: documents, isLoading } = useCompanyDocuments(DEMO_COMPANY);
 
   const stats = useMemo(() => {
@@ -75,7 +77,7 @@ export default function CompanyDashboardPage() {
     <div className="container py-8 space-y-8">
       <PageHeader
         title="Company Dashboard"
-        subtitle={DEMO_COMPANY}
+        subtitle={isMock ? DEMO_COMPANY : "Your organisation"}
         icon={LayoutDashboard}
         actions={
           <Button className="gap-2" onClick={() => navigate({ to: "/company/submit" })}>

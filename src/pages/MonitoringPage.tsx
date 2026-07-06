@@ -26,13 +26,14 @@ import { useNavigate } from "@tanstack/react-router";
 import { Activity, Award, BellRing, CalendarClock, CheckCheck, Megaphone } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ApiError } from "../api/types";
 import {
   useAddAlert,
   useAlerts,
   useDocuments,
   useFrameworks,
   useResolveAlert,
-} from "../hooks/useMockData";
+} from "../hooks/data";
 import type { Alert } from "../mock/types";
 import { formatDate, nowISO } from "../mock/utils";
 
@@ -105,22 +106,30 @@ export default function MonitoringPage() {
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!message.trim()) return toast.error("Please enter an update message");
-    await addAlert.mutateAsync({
-      docId: "",
-      message: framework ? `[${framework}] ${message.trim()}` : message.trim(),
-      dueDate: effectiveDate ? new Date(effectiveDate).toISOString() : nowISO(),
-      severity,
-    });
-    toast.success("Regulatory update published");
-    setFramework("");
-    setMessage("");
-    setSeverity("info");
-    setEffectiveDate("");
+    try {
+      await addAlert.mutateAsync({
+        docId: "",
+        message: framework ? `[${framework}] ${message.trim()}` : message.trim(),
+        dueDate: effectiveDate ? new Date(effectiveDate).toISOString() : nowISO(),
+        severity,
+      });
+      toast.success("Regulatory update published");
+      setFramework("");
+      setMessage("");
+      setSeverity("info");
+      setEffectiveDate("");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not publish update");
+    }
   };
 
   const handleResolve = async (alert: Alert) => {
-    await resolveAlert.mutateAsync(alert.id);
-    toast.success("Alert resolved");
+    try {
+      await resolveAlert.mutateAsync(alert.id);
+      toast.success("Alert resolved");
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not resolve alert");
+    }
   };
 
   return (

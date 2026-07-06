@@ -2,32 +2,42 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "@tanstack/react-router";
-import { LogIn, Mail, Lock, ShieldCheck, Wallet } from "lucide-react";
+import { LogIn, Mail, Lock, ShieldCheck } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { roleHome, roleLabel, useRole } from "../context/RoleContext";
-import { fakeWallet, sleep } from "../mock/utils";
+import { ApiError } from "../api/types";
+import { useAuth } from "../context/AuthContext";
+import { roleHome, roleLabel } from "../context/RoleContext";
 
 export default function SignInPage() {
   const navigate = useNavigate();
-  const { role } = useRole();
+  const { login, isMock, role } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [wallet, setWallet] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!isMock && (!email.trim() || !password)) {
+      toast.error("Enter your email and password");
+      return;
+    }
     setIsSubmitting(true);
-    await sleep();
-    setIsSubmitting(false);
-    toast.success(`Signed in as ${roleLabel[role]} (demo)`);
-    navigate({ to: roleHome[role] });
-  };
-
-  const handleConnectWallet = () => {
-    setWallet(fakeWallet());
-    toast.success("Wallet connected (simulated)");
+    try {
+      const signedInRole = await login(email.trim(), password);
+      toast.success(
+        isMock
+          ? `Signed in as ${roleLabel[signedInRole]} (demo)`
+          : "Signed in",
+      );
+      navigate({ to: roleHome[signedInRole] });
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Sign in failed. Check your credentials.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -48,9 +58,12 @@ export default function SignInPage() {
               multi-signature governance and on-chain proof of authenticity.
             </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Demo environment — no real authentication or network calls.
-          </p>
+          {isMock && (
+            <p className="text-xs text-muted-foreground">
+              Demo environment — credentials are ignored; you are signed in as the
+              role selected in “View as”.
+            </p>
+          )}
         </div>
 
         {/* Form panel */}
@@ -59,11 +72,17 @@ export default function SignInPage() {
             <div className="space-y-1">
               <h1 className="text-2xl font-bold">Sign in</h1>
               <p className="text-sm text-muted-foreground">
-                Previewing as{" "}
-                <span className="font-medium text-foreground">
-                  {roleLabel[role]}
-                </span>
-                . Switch roles with “View as” in the header.
+                {isMock ? (
+                  <>
+                    Previewing as{" "}
+                    <span className="font-medium text-foreground">
+                      {roleLabel[role]}
+                    </span>
+                    . Switch roles with “View as” in the header.
+                  </>
+                ) : (
+                  "Sign in to your AITT account."
+                )}
               </p>
             </div>
 
@@ -79,6 +98,7 @@ export default function SignInPage() {
                     className="pl-9"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -94,6 +114,7 @@ export default function SignInPage() {
                     className="pl-9"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    disabled={isSubmitting}
                   />
                 </div>
               </div>
@@ -103,30 +124,6 @@ export default function SignInPage() {
                 {isSubmitting ? "Signing in…" : "Sign in"}
               </Button>
             </form>
-
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <span className="w-full border-t" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">or</span>
-              </div>
-            </div>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full gap-2"
-              onClick={handleConnectWallet}
-            >
-              <Wallet className="h-4 w-4" />
-              {wallet ? "Wallet connected ✓" : "Connect Wallet"}
-            </Button>
-            {wallet && (
-              <p className="break-all text-center font-mono text-xs text-muted-foreground">
-                {wallet}
-              </p>
-            )}
 
             <p className="text-center text-sm text-muted-foreground">
               New company?{" "}

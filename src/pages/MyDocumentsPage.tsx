@@ -9,13 +9,15 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "@tanstack/react-router";
 import { FileText, Upload } from "lucide-react";
 import { useMemo } from "react";
-import { useCompanyDocuments } from "../hooks/useMockData";
+import { useAuth } from "../context/AuthContext";
+import { useCompanyDocuments } from "../hooks/data";
 import { DEMO_COMPANY } from "../mock/identity";
 import type { DocItem } from "../mock/types";
 import { formatDate } from "../mock/utils";
 
 export default function MyDocumentsPage() {
   const navigate = useNavigate();
+  const { isMock } = useAuth();
   const { data: documents, isLoading } = useCompanyDocuments(DEMO_COMPANY);
 
   const sorted = useMemo(
@@ -58,7 +60,11 @@ export default function MyDocumentsPage() {
     <div className="container py-8 space-y-8">
       <PageHeader
         title="My Documents"
-        subtitle={`All documents submitted by ${DEMO_COMPANY}.`}
+        subtitle={
+          isMock
+            ? `All documents submitted by ${DEMO_COMPANY}.`
+            : "All documents submitted by your organisation."
+        }
         icon={FileText}
         actions={
           <Button className="gap-2" onClick={() => navigate({ to: "/company/submit" })}>

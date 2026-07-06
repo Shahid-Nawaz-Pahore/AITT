@@ -22,7 +22,9 @@ import { useNavigate, useParams } from "@tanstack/react-router";
 import { AlertCircle, Building2, FileText, Hash, ScrollText } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useAddReview, useDocument } from "../hooks/useMockData";
+import { ApiError } from "../api/types";
+import { useAuth } from "../context/AuthContext";
+import { useAddReview, useDocument } from "../hooks/data";
 import { DEMO_REVIEWER } from "../mock/identity";
 import type { ReviewDecision } from "../mock/types";
 import { fakeSha256, fakeTxHash, formatDate, nowISO } from "../mock/utils";
@@ -38,6 +40,7 @@ const LOCKED_STATUSES = ["issued", "revoked", "expired"];
 
 export default function DocumentReviewPage() {
   const navigate = useNavigate();
+  const { isMock } = useAuth();
   const params = useParams({ strict: false });
   const id = (params as { id?: string }).id;
   const { data: doc, isLoading } = useDocument(id);
@@ -84,21 +87,26 @@ export default function DocumentReviewPage() {
     if (!decision) return toast.error("Please select a review decision");
     if (!comment.trim()) return toast.error("Please add a comment / recommendation");
 
-    const txHash = fakeTxHash();
-    await addReview.mutateAsync({
-      docId: doc.id,
-      review: {
-        reviewer: DEMO_REVIEWER,
-        decision,
-        complianceScore: score,
-        comment: comment.trim(),
-        date: nowISO(),
-        commentHash: fakeSha256(),
-        txHash,
-      },
-    });
-    toast.success("Review recorded and anchored on-chain ✓");
-    navigate({ to: "/expert" });
+    try {
+      // In real mode the backend sets reviewer/date/commentHash/txHash; these
+      // placeholders only matter for the mock store.
+      await addReview.mutateAsync({
+        docId: doc.id,
+        review: {
+          reviewer: DEMO_REVIEWER,
+          decision,
+          complianceScore: score,
+          comment: comment.trim(),
+          date: nowISO(),
+          commentHash: fakeSha256(),
+          txHash: fakeTxHash(),
+        },
+      });
+      toast.success("Review recorded and anchored on-chain ✓");
+      navigate({ to: "/expert" });
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not record review");
+    }
   };
 
   return (
@@ -153,7 +161,11 @@ export default function DocumentReviewPage() {
           <CardHeader>
             <CardTitle className="text-lg">Your review</CardTitle>
             <CardDescription>
-              Reviewing as <span className="font-medium">{DEMO_REVIEWER}</span>.
+              {isMock ? (
+                <>
+                  Reviewing as <span className="font-medium">{DEMO_REVIEWER}</span>.{" "}
+                </>
+              ) : null}
               Your decision, score and a comment hash are anchored on-chain.
             </CardDescription>
           </CardHeader>

@@ -15,7 +15,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "@tanstack/react-router";
 import { FileText, Search } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useDocuments } from "../hooks/useMockData";
+import { useDocuments } from "../hooks/data";
 import type { DocItem, DocStatus } from "../mock/types";
 import { formatDate } from "../mock/utils";
 

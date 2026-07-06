@@ -14,20 +14,23 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trash2, UserPlus, Users, Wallet } from "lucide-react";
+import { BadgeCheck, Trash2, UserPlus, Users, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
+import { ApiError } from "../api/types";
 import {
+  useActivateSubAdmin,
   useInviteSubAdmin,
   useRemoveSubAdmin,
   useSubAdmins,
-} from "../hooks/useMockData";
+} from "../hooks/data";
 import type { SubAdmin } from "../mock/types";
 import { fakeWallet, shortHash } from "../mock/utils";
 
 export default function AdminExpertsPage() {
   const { data: subAdmins, isLoading } = useSubAdmins();
   const inviteSubAdmin = useInviteSubAdmin();
+  const activateSubAdmin = useActivateSubAdmin();
   const removeSubAdmin = useRemoveSubAdmin();
 
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -43,26 +46,43 @@ export default function AdminExpertsPage() {
   };
 
   const handleInvite = async () => {
-    if (!name.trim() || !email.trim() || !wallet.trim()) {
-      toast.error("Please fill in name, email and wallet");
+    if (!name.trim() || !email.trim()) {
+      toast.error("Please fill in name and email");
       return;
     }
-    await inviteSubAdmin.mutateAsync({
-      name: name.trim(),
-      email: email.trim(),
-      wallet: wallet.trim(),
-    });
-    toast.success(`Invitation sent to ${name.trim()}`);
-    resetForm();
-    setInviteOpen(false);
+    try {
+      await inviteSubAdmin.mutateAsync({
+        name: name.trim(),
+        email: email.trim(),
+        wallet: wallet.trim() || undefined,
+      });
+      toast.success(`Invitation sent to ${name.trim()}`);
+      resetForm();
+      setInviteOpen(false);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not invite expert");
+    }
+  };
+
+  const handleActivate = async (sub: SubAdmin) => {
+    try {
+      await activateSubAdmin.mutateAsync(sub.id);
+      toast.success(`${sub.name} activated — can now review`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not activate expert");
+    }
   };
 
   const handleRemove = async () => {
     if (!removeTarget) return;
     const name = removeTarget.name;
-    await removeSubAdmin.mutateAsync(removeTarget.id);
-    setRemoveTarget(null);
-    toast.success(`${name} removed`);
+    try {
+      await removeSubAdmin.mutateAsync(removeTarget.id);
+      setRemoveTarget(null);
+      toast.success(`${name} removed`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not remove expert");
+    }
   };
 
   const columns: Column<SubAdmin>[] = [
@@ -100,15 +120,28 @@ export default function AdminExpertsPage() {
       headClassName: "text-right",
       className: "text-right",
       cell: (s) => (
-        <Button
-          size="sm"
-          variant="outline"
-          className="gap-1 text-destructive hover:text-destructive"
-          onClick={() => setRemoveTarget(s)}
-        >
-          <Trash2 className="h-4 w-4" />
-          Remove
-        </Button>
+        <div className="flex justify-end gap-2">
+          {s.status === "invited" && (
+            <Button
+              size="sm"
+              className="gap-1"
+              onClick={() => handleActivate(s)}
+              disabled={activateSubAdmin.isPending}
+            >
+              <BadgeCheck className="h-4 w-4" />
+              Activate
+            </Button>
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1 text-destructive hover:text-destructive"
+            onClick={() => setRemoveTarget(s)}
+          >
+            <Trash2 className="h-4 w-4" />
+            Remove
+          </Button>
+        </div>
       ),
     },
   ];
@@ -168,7 +201,9 @@ export default function AdminExpertsPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="expert-wallet">Wallet</Label>
+              <Label htmlFor="expert-wallet">
+                Wallet <span className="text-muted-foreground">(optional)</span>
+              </Label>
               <div className="flex gap-2">
                 <Input
                   id="expert-wallet"

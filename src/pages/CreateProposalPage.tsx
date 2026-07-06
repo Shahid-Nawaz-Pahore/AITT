@@ -15,8 +15,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { useCreateProposal, useDocuments } from "../hooks/useMockData";
-import { DEMO_ADMIN } from "../mock/identity";
+import { ApiError } from "../api/types";
+import { useCreateProposal, useDocuments } from "../hooks/data";
 import { PROPOSAL_TYPE_OPTIONS } from "../mock/labels";
 import type { ProposalType } from "../mock/types";
 
@@ -44,15 +44,20 @@ export default function CreateProposalPage() {
       return toast.error("Please select the certificate to revoke");
     }
 
-    const proposal = await createProposal.mutateAsync({
-      type,
-      title: title.trim(),
-      description: description.trim(),
-      createdBy: DEMO_ADMIN,
-      targetRef: targetRef || undefined,
-    });
-    toast.success("Proposal created — pending multi-sig approval");
-    navigate({ to: `/admin/governance/${proposal.id}` });
+    try {
+      const proposal = await createProposal.mutateAsync({
+        type,
+        title: title.trim(),
+        description: description.trim(),
+        targetRef: targetRef || undefined,
+      });
+      toast.success("Proposal created — pending multi-sig approval");
+      navigate({ to: `/admin/governance/${proposal.id}` });
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Could not create proposal",
+      );
+    }
   };
 
   return (

@@ -14,16 +14,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { FileCheck2, Upload } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { useFrameworks, useSubmitDocument } from "../hooks/useMockData";
-import { DEMO_COMPANY } from "../mock/identity";
-
-async function sha256Hex(file: File): Promise<string> {
-  const buffer = await file.arrayBuffer();
-  const digest = await crypto.subtle.digest("SHA-256", buffer);
-  return Array.from(new Uint8Array(digest))
-    .map((b) => b.toString(16).padStart(2, "0"))
-    .join("");
-}
+import { ApiError } from "../api/types";
+import { useFrameworks, useSubmitDocument } from "../hooks/data";
 
 function isAcceptedFile(file: File): boolean {
   const name = file.name.toLowerCase();
@@ -39,7 +31,6 @@ export default function SubmitDocumentPage() {
   const [subject, setSubject] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [isHashing, setIsHashing] = useState(false);
 
   const handleFile = useCallback((f: File) => {
     if (!isAcceptedFile(f)) {
@@ -67,25 +58,21 @@ export default function SubmitDocumentPage() {
     if (!file) return toast.error("Please attach a PDF or .docx file");
 
     try {
-      setIsHashing(true);
-      const hash = await sha256Hex(file);
-      setIsHashing(false);
       await submitDocument.mutateAsync({
-        filename: name.trim(),
-        company: DEMO_COMPANY,
+        file,
         subject,
-        hash,
+        filename: name.trim(),
       });
       toast.success("Document submitted for review");
       navigate({ to: "/company/documents" });
     } catch (err) {
-      setIsHashing(false);
-      console.error(err);
-      toast.error("Could not submit the document");
+      toast.error(
+        err instanceof ApiError ? err.message : "Could not submit the document",
+      );
     }
   };
 
-  const isBusy = isHashing || submitDocument.isPending;
+  const isBusy = submitDocument.isPending;
 
   return (
     <div className="container py-8 space-y-8">
@@ -173,17 +160,13 @@ export default function SubmitDocumentPage() {
                   </label>
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  A SHA-256 hash of the file is computed in your browser and
-                  anchored with the submission.
+                  A SHA-256 hash of the file is computed and anchored on-chain
+                  with the submission.
                 </p>
               </div>
 
               <Button type="submit" className="w-full" disabled={isBusy}>
-                {isHashing
-                  ? "Hashing file…"
-                  : submitDocument.isPending
-                    ? "Submitting…"
-                    : "Submit for review"}
+                {submitDocument.isPending ? "Submitting…" : "Submit for review"}
               </Button>
             </form>
           </CardContent>

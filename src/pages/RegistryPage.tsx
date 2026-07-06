@@ -16,7 +16,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useNavigate } from "@tanstack/react-router";
 import { Building2, Calendar, ScrollText, Search, ShieldCheck } from "lucide-react";
 import { useMemo, useState } from "react";
-import { useDocuments } from "../hooks/useMockData";
+import { useDocuments } from "../hooks/data";
 import type { DocStatus } from "../mock/types";
 import { formatDate } from "../mock/utils";
 

@@ -9,32 +9,49 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "@tanstack/react-router";
-import { Building2, Info, Wallet } from "lucide-react";
+import { Building2, Info, Lock, Wallet } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useMockStore } from "../mock/store";
-import { fakeWallet, sleep } from "../mock/utils";
+import { ApiError } from "../api/types";
+import { useAuth } from "../context/AuthContext";
+import { fakeWallet } from "../mock/utils";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const addCompany = useMockStore((s) => s.addCompany);
+  const { registerCompany, isMock } = useAuth();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [wallet, setWallet] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !email.trim() || !wallet.trim()) {
-      toast.error("Please fill in company name, email and wallet");
+    if (!name.trim() || !email.trim()) {
+      toast.error("Please fill in company name and email");
+      return;
+    }
+    if (!isMock && !password) {
+      toast.error("Please choose a password so you can sign in once approved");
       return;
     }
     setIsSubmitting(true);
-    await sleep();
-    addCompany({ name: name.trim(), email: email.trim(), wallet: wallet.trim() });
-    setIsSubmitting(false);
-    toast.success("Registration submitted — pending admin review");
-    navigate({ to: "/signin" });
+    try {
+      await registerCompany({
+        name: name.trim(),
+        email: email.trim(),
+        password,
+        wallet: wallet.trim() || undefined,
+      });
+      toast.success("Registration submitted — pending admin review");
+      navigate({ to: "/signin" });
+    } catch (err) {
+      toast.error(
+        err instanceof ApiError ? err.message : "Could not submit registration",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -88,13 +105,32 @@ export default function RegisterPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="company-wallet">Wallet address</Label>
+                <Label htmlFor="company-password">Password</Label>
+                <div className="relative">
+                  <Lock className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    id="company-password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="Choose a password"
+                    className="pl-9"
+                    disabled={isSubmitting}
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="company-wallet">
+                  Wallet address{" "}
+                  <span className="text-muted-foreground">(optional)</span>
+                </Label>
                 <div className="flex gap-2">
                   <Input
                     id="company-wallet"
                     value={wallet}
                     onChange={(e) => setWallet(e.target.value)}
-                    placeholder="G…"
+                    placeholder="G… (leave blank for a custodial wallet)"
                     className="font-mono text-xs"
                     disabled={isSubmitting}
                   />
@@ -106,7 +142,7 @@ export default function RegisterPage() {
                     disabled={isSubmitting}
                   >
                     <Wallet className="h-4 w-4" />
-                    Connect
+                    Generate
                   </Button>
                 </div>
               </div>

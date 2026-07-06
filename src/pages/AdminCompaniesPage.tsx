@@ -7,7 +7,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, Check, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-import { useApproveCompany, useCompanies, useRemoveCompany } from "../hooks/useMockData";
+import { ApiError } from "../api/types";
+import { useApproveCompany, useCompanies, useRemoveCompany } from "../hooks/data";
 import type { Company } from "../mock/types";
 import { formatDate, shortHash } from "../mock/utils";
 
@@ -18,16 +19,24 @@ export default function AdminCompaniesPage() {
   const [removeTarget, setRemoveTarget] = useState<Company | null>(null);
 
   const handleApprove = async (company: Company) => {
-    await approveCompany.mutateAsync(company.id);
-    toast.success(`${company.name} approved`);
+    try {
+      await approveCompany.mutateAsync(company.id);
+      toast.success(`${company.name} approved`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not approve company");
+    }
   };
 
   const handleRemove = async () => {
     if (!removeTarget) return;
     const name = removeTarget.name;
-    await removeCompany.mutateAsync(removeTarget.id);
-    setRemoveTarget(null);
-    toast.success(`${name} removed`);
+    try {
+      await removeCompany.mutateAsync(removeTarget.id);
+      setRemoveTarget(null);
+      toast.success(`${name} removed`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : "Could not remove company");
+    }
   };
 
   const columns: Column<Company>[] = [

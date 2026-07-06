@@ -60,6 +60,7 @@ interface MockState {
 
   // Sub-admins (legal experts)
   inviteSubAdmin: (input: { name: string; email: string; wallet: string }) => SubAdmin;
+  activateSubAdmin: (id: string) => void;
   removeSubAdmin: (id: string) => void;
 
   // Documents
@@ -146,6 +147,12 @@ export const useMockStore = create<MockState>((set, get) => ({
     set((s) => ({ subAdmins: [subAdmin, ...s.subAdmins] }));
     return subAdmin;
   },
+  activateSubAdmin: (id) =>
+    set((s) => ({
+      subAdmins: s.subAdmins.map((sa) =>
+        sa.id === id ? { ...sa, status: "active" } : sa,
+      ),
+    })),
   removeSubAdmin: (id) =>
     set((s) => ({ subAdmins: s.subAdmins.filter((sa) => sa.id !== id) })),
 
