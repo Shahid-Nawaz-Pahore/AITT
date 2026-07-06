@@ -3,13 +3,11 @@ import { RouterProvider, createRouter } from "@tanstack/react-router";
 import { Outlet, createRootRoute, createRoute } from "@tanstack/react-router";
 import { ThemeProvider } from "next-themes";
 import type { ReactNode } from "react";
-import { DemoBanner } from "./components/DemoBanner";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
 import { Protected } from "./components/Protected";
 import { AuthProvider } from "./context/AuthContext";
 import type { Role } from "./mock/types";
-import AIRiskMinimizationPage from "./pages/AIRiskMinimizationPage";
 import AdminCertificatesPage from "./pages/AdminCertificatesPage";
 import AdminCompaniesPage from "./pages/AdminCompaniesPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
@@ -18,16 +16,11 @@ import AdminExpertsPage from "./pages/AdminExpertsPage";
 import AdminFrameworksPage from "./pages/AdminFrameworksPage";
 import CertificatePage from "./pages/CertificatePage";
 import CompanyDashboardPage from "./pages/CompanyDashboardPage";
-import ComplianceDashboardPage from "./pages/ComplianceDashboardPage";
 import CreateProposalPage from "./pages/CreateProposalPage";
 import DocumentReviewPage from "./pages/DocumentReviewPage";
-import CybersecurityAIAssistantPage from "./pages/CybersecurityAIAssistantPage";
-import CybersecurityDashboardPage from "./pages/CybersecurityDashboardPage";
-import DocumentLibraryPage from "./pages/DocumentLibraryPage";
 import GovernanceDashboardPage from "./pages/GovernanceDashboardPage";
 import GovernanceSettingsPage from "./pages/GovernanceSettingsPage";
 import HomePage from "./pages/HomePage";
-import LLMChatPage from "./pages/LLMChatPage";
 import MonitoringPage from "./pages/MonitoringPage";
 import MyDocumentsPage from "./pages/MyDocumentsPage";
 import MyReviewsPage from "./pages/MyReviewsPage";
@@ -68,27 +61,9 @@ const guard =
     </Protected>
   );
 
-// Mark a legacy ICP-demo screen (no backend) with a "not connected" banner.
-const demo =
-  (Component: () => ReactNode): (() => ReactNode) =>
-  () => (
-    <>
-      <DemoBanner />
-      <Component />
-    </>
-  );
-
 // --- Real public screens ---
 const indexRoute = route("/", HomePage);
 const verificationRoute = route("/verification", VerificationPage);
-
-// --- Legacy ICP-demo screens (no backend; banner-marked — see D8) ---
-const libraryRoute = route("/library", demo(DocumentLibraryPage));
-const dashboardRoute = route("/compliance", demo(ComplianceDashboardPage));
-const llmRoute = route("/ai-assistant", demo(LLMChatPage));
-const cybersecurityDashboardRoute = route("/cybersecurity", demo(CybersecurityDashboardPage));
-const cybersecurityAIRoute = route("/cybersecurity-assistant", demo(CybersecurityAIAssistantPage));
-const aiRiskRoute = route("/ai-risk", demo(AIRiskMinimizationPage));
 
 // --- Auth (Phase 1) ---
 const signInRoute = route("/signin", SignInPage);
@@ -129,13 +104,7 @@ const monitoringRoute = route("/admin/monitoring", guard(["admin"], MonitoringPa
 
 const routeTree = rootRoute.addChildren([
   indexRoute,
-  libraryRoute,
-  dashboardRoute,
   verificationRoute,
-  llmRoute,
-  cybersecurityDashboardRoute,
-  cybersecurityAIRoute,
-  aiRiskRoute,
   signInRoute,
   registerRoute,
   registryRoute,
