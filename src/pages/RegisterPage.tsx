@@ -9,12 +9,11 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useNavigate } from "@tanstack/react-router";
-import { Building2, Info, Lock, Wallet } from "lucide-react";
+import { Building2, Info, Lock } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ApiError } from "../api/types";
 import { useAuth } from "../context/AuthContext";
-import { fakeWallet } from "../mock/utils";
 
 export default function RegisterPage() {
   const navigate = useNavigate();
@@ -22,7 +21,6 @@ export default function RegisterPage() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [wallet, setWallet] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -41,7 +39,6 @@ export default function RegisterPage() {
         name: name.trim(),
         email: email.trim(),
         password,
-        wallet: wallet.trim() || undefined,
       });
       toast.success("Registration submitted — pending admin review");
       navigate({ to: "/signin" });
@@ -76,7 +73,8 @@ export default function RegisterPage() {
               <Info className="mt-0.5 h-4 w-4 flex-shrink-0" />
               <p>
                 Your account is reviewed by an administrator before activation.
-                You will be able to sign in once approved.
+                A secure blockchain wallet is created for you automatically. You
+                will be able to sign in once approved.
               </p>
             </div>
 
@@ -117,33 +115,6 @@ export default function RegisterPage() {
                     className="pl-9"
                     disabled={isSubmitting}
                   />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="company-wallet">
-                  Wallet address{" "}
-                  <span className="text-muted-foreground">(optional)</span>
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="company-wallet"
-                    value={wallet}
-                    onChange={(e) => setWallet(e.target.value)}
-                    placeholder="G… (leave blank for a custodial wallet)"
-                    className="font-mono text-xs"
-                    disabled={isSubmitting}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="flex-shrink-0 gap-2"
-                    onClick={() => setWallet(fakeWallet())}
-                    disabled={isSubmitting}
-                  >
-                    <Wallet className="h-4 w-4" />
-                    Generate
-                  </Button>
                 </div>
               </div>
 
