@@ -83,6 +83,23 @@ export function useDocuments() {
   });
 }
 
+// Public certificate registry — no auth required (issued/revoked/expired certs).
+export function usePublicRegistry() {
+  return useQuery({
+    queryKey: ["public-registry"],
+    queryFn: async (): Promise<DocItem[]> => {
+      if (USE_MOCK) {
+        await sleep();
+        return useMockStore.getState().documents;
+      }
+      const { data } = await apiGetPaginated<DocItem[]>("/documents/registry", {
+        query: { limit: LIST_LIMIT },
+      });
+      return (data ?? []).map(normalizeDocItem);
+    },
+  });
+}
+
 export function useDocument(id: string | undefined) {
   return useQuery({
     queryKey: qk.document(id),
