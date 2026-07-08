@@ -26,7 +26,13 @@ const ACCEPTED_MIME_TYPES = [
 ];
 const ACCEPT_ATTR = [...ACCEPTED_EXTENSIONS, ...ACCEPTED_MIME_TYPES].join(",");
 
+// Max upload size — keep in sync with the backend MAX_UPLOAD_BYTES (10 MB).
+const MAX_UPLOAD_MB = 10;
+const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
+
 // Returns a human-readable reason if the file is NOT an accepted document, else null.
+// Checked the moment a file is selected, so bad/oversized files are rejected up
+// front — before any upload happens.
 function fileRejectionReason(file: File): string | null {
   const name = file.name.toLowerCase();
   const extOk = ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
@@ -35,6 +41,10 @@ function fileRejectionReason(file: File): string | null {
   }
   if (file.type && !ACCEPTED_MIME_TYPES.includes(file.type)) {
     return `"${file.name}" doesn't appear to be a valid document (detected type: ${file.type}). Only PDF and Word documents are allowed.`;
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    const mb = (file.size / (1024 * 1024)).toFixed(1);
+    return `"${file.name}" is ${mb} MB, which exceeds the ${MAX_UPLOAD_MB} MB limit. Please upload a smaller document.`;
   }
   return null;
 }
@@ -135,7 +145,7 @@ export default function SubmitDocumentPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>File — documents only (PDF or Word: .pdf, .doc, .docx)</Label>
+                <Label>File — documents only, max {MAX_UPLOAD_MB} MB (PDF or Word: .pdf, .doc, .docx)</Label>
                 <div
                   onDrop={handleDrop}
                   onDragOver={(e) => {
