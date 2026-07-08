@@ -17,9 +17,26 @@ import { toast } from "sonner";
 import { ApiError } from "../api/types";
 import { useFrameworks, useSubmitDocument } from "../hooks/data";
 
-function isAcceptedFile(file: File): boolean {
+// Only compliance DOCUMENTS may be submitted — no videos, images, archives or apps.
+const ACCEPTED_EXTENSIONS = [".pdf", ".doc", ".docx"];
+const ACCEPTED_MIME_TYPES = [
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+];
+const ACCEPT_ATTR = [...ACCEPTED_EXTENSIONS, ...ACCEPTED_MIME_TYPES].join(",");
+
+// Returns a human-readable reason if the file is NOT an accepted document, else null.
+function fileRejectionReason(file: File): string | null {
   const name = file.name.toLowerCase();
-  return name.endsWith(".pdf") || name.endsWith(".docx");
+  const extOk = ACCEPTED_EXTENSIONS.some((ext) => name.endsWith(ext));
+  if (!extOk) {
+    return `"${file.name}" is not a supported document. Only PDF and Word files (.pdf, .doc, .docx) are allowed — videos, images and applications are not accepted.`;
+  }
+  if (file.type && !ACCEPTED_MIME_TYPES.includes(file.type)) {
+    return `"${file.name}" doesn't appear to be a valid document (detected type: ${file.type}). Only PDF and Word documents are allowed.`;
+  }
+  return null;
 }
 
 export default function SubmitDocumentPage() {
@@ -33,8 +50,9 @@ export default function SubmitDocumentPage() {
   const [isDragging, setIsDragging] = useState(false);
 
   const handleFile = useCallback((f: File) => {
-    if (!isAcceptedFile(f)) {
-      toast.error("Only PDF or Word (.docx) files are accepted");
+    const reason = fileRejectionReason(f);
+    if (reason) {
+      toast.error(reason);
       return;
     }
     setFile(f);
@@ -117,7 +135,7 @@ export default function SubmitDocumentPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>File (PDF or .docx)</Label>
+                <Label>File — documents only (PDF or Word: .pdf, .doc, .docx)</Label>
                 <div
                   onDrop={handleDrop}
                   onDragOver={(e) => {
@@ -133,7 +151,7 @@ export default function SubmitDocumentPage() {
                 >
                   <input
                     type="file"
-                    accept=".pdf,.docx,application/pdf"
+                    accept={ACCEPT_ATTR}
                     onChange={(e) => {
                       const f = e.target.files?.[0];
                       if (f) handleFile(f);
