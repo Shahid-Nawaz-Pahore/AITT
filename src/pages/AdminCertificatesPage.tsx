@@ -19,6 +19,16 @@ import {
 import type { DocItem } from "../mock/types";
 
 const ISSUABLE = ["approved", "approved_with_recommendations"];
+// The Certificates / Issuance workspace only shows documents relevant to issuance:
+// approved (ready to issue) or already a certificate (issued/revoked/expired).
+// Plain submissions still under review live under the Documents tab.
+const RELEVANT_STATUSES = [
+  "approved",
+  "approved_with_recommendations",
+  "issued",
+  "revoked",
+  "expired",
+];
 
 export default function AdminCertificatesPage() {
   const navigate = useNavigate();
@@ -29,9 +39,9 @@ export default function AdminCertificatesPage() {
   const [revokeTarget, setRevokeTarget] = useState<DocItem | null>(null);
 
   const filtered = useMemo(() => {
-    const docs = [...(documents ?? [])].sort((a, b) =>
-      b.submittedAt.localeCompare(a.submittedAt),
-    );
+    const docs = [...(documents ?? [])]
+      .filter((d) => RELEVANT_STATUSES.includes(d.status))
+      .sort((a, b) => b.submittedAt.localeCompare(a.submittedAt));
     const q = search.trim().toLowerCase();
     if (!q) return docs;
     return docs.filter(
