@@ -5,6 +5,7 @@ import { ThemeProvider } from "next-themes";
 import type { ReactNode } from "react";
 import Footer from "./components/Footer";
 import Header from "./components/Header";
+import { CompanyGate } from "./components/CompanyGate";
 import { Protected } from "./components/Protected";
 import { AuthProvider } from "./context/AuthContext";
 import type { Role } from "./mock/types";
@@ -61,6 +62,15 @@ const guard =
     </Protected>
   );
 
+// Company routes: role guard + approval gate. A company that isn't approved yet
+// sees an "approval pending" screen instead of the feature pages.
+const companyGuard = (Component: () => ReactNode): (() => ReactNode) =>
+  guard(["company"], () => (
+    <CompanyGate>
+      <Component />
+    </CompanyGate>
+  ));
+
 // --- Real public screens ---
 const indexRoute = route("/", HomePage);
 const verificationRoute = route("/verification", VerificationPage);
@@ -72,10 +82,10 @@ const registerRoute = route("/register", RegisterPage);
 // --- Public + Company (Phase 2) ---
 const registryRoute = route("/registry", RegistryPage);
 const certificateRoute = route("/certificate/$id", CertificatePage);
-const companyRoute = route("/company", guard(["company"], CompanyDashboardPage));
-const companySubmitRoute = route("/company/submit", guard(["company"], SubmitDocumentPage));
-const companyDocsRoute = route("/company/documents", guard(["company"], MyDocumentsPage));
-const companyTemplatesRoute = route("/company/templates", guard(["company"], TemplatesPage));
+const companyRoute = route("/company", companyGuard(CompanyDashboardPage));
+const companySubmitRoute = route("/company/submit", companyGuard(SubmitDocumentPage));
+const companyDocsRoute = route("/company/documents", companyGuard(MyDocumentsPage));
+const companyTemplatesRoute = route("/company/templates", companyGuard(TemplatesPage));
 
 // --- Sub-Admin (Phase 3) ---
 const expertRoute = route("/expert", guard(["sub_admin"], ReviewQueuePage));

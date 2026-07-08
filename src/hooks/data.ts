@@ -115,6 +115,19 @@ export function useDocument(id: string | undefined) {
   });
 }
 
+// The signed-in company's own record — used to gate company features until an
+// admin approves the account (status becomes "active").
+export function useMyCompany(companyId?: string) {
+  return useQuery({
+    queryKey: ["my-company", companyId ?? "none"],
+    enabled: !USE_MOCK && !!companyId,
+    queryFn: async (): Promise<Company | null> => {
+      if (!companyId) return null;
+      return normalizeCompany(await apiGet<Company>(`/companies/${companyId}`));
+    },
+  });
+}
+
 /** Company-scoped documents. In real mode the backend already scopes to the
  *  caller's company, so `companyName` is only used for the mock filter. */
 export function useCompanyDocuments(companyName?: string) {
