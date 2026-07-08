@@ -115,9 +115,19 @@ export default function Header() {
           <button
             type="button"
             onClick={() => navigate({ to: roleHome[role] })}
-            className="-ml-2 flex flex-shrink-0 items-center gap-2 text-lg font-bold text-foreground transition-opacity hover:opacity-80"
+            className="-ml-2 flex flex-shrink-0 items-center transition-opacity hover:opacity-80"
+            aria-label="AITT home"
           >
-            AITT
+            <img
+              src="/assets/images/logo/logo.svg"
+              alt="AITT"
+              className="h-8 w-auto dark:hidden"
+            />
+            <img
+              src="/assets/images/logo/logo-dark.svg"
+              alt="AITT"
+              className="hidden h-8 w-auto dark:block"
+            />
           </button>
 
           <nav className="hidden items-center gap-1 lg:flex">
