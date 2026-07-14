@@ -79,17 +79,21 @@ export default function AdminCompaniesPage() {
       header: "",
       headClassName: "text-right",
       className: "text-right",
-      cell: (c) => (
+      cell: (c) => {
+        // Only the row being approved shows the pending state (not every button).
+        const approving =
+          approveCompany.isPending && approveCompany.variables === c.id;
+        return (
         <div className="flex justify-end gap-2">
           {c.status === "pending" && (
             <Button
               size="sm"
               className="gap-1"
               onClick={() => handleApprove(c)}
-              disabled={approveCompany.isPending}
+              disabled={approving}
             >
               <Check className="h-4 w-4" />
-              Approve
+              {approving ? "Approving…" : "Approve"}
             </Button>
           )}
           <Button
@@ -102,7 +106,8 @@ export default function AdminCompaniesPage() {
             Remove
           </Button>
         </div>
-      ),
+        );
+      },
     },
   ];
 

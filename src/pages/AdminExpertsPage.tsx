@@ -14,7 +14,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { BadgeCheck, Trash2, UserPlus, Users, Wallet } from "lucide-react";
+import { BadgeCheck, Trash2, UserPlus, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { ApiError } from "../api/types";
@@ -25,7 +25,7 @@ import {
   useSubAdmins,
 } from "../hooks/data";
 import type { SubAdmin } from "../mock/types";
-import { fakeWallet, shortHash } from "../mock/utils";
+import { shortHash } from "../mock/utils";
 
 export default function AdminExpertsPage() {
   const { data: subAdmins, isLoading } = useSubAdmins();
@@ -36,13 +36,11 @@ export default function AdminExpertsPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [wallet, setWallet] = useState("");
   const [removeTarget, setRemoveTarget] = useState<SubAdmin | null>(null);
 
   const resetForm = () => {
     setName("");
     setEmail("");
-    setWallet("");
   };
 
   const handleInvite = async () => {
@@ -54,7 +52,6 @@ export default function AdminExpertsPage() {
       await inviteSubAdmin.mutateAsync({
         name: name.trim(),
         email: email.trim(),
-        wallet: wallet.trim() || undefined,
       });
       toast.success(`Invitation sent to ${name.trim()}`);
       resetForm();
@@ -119,30 +116,35 @@ export default function AdminExpertsPage() {
       header: "",
       headClassName: "text-right",
       className: "text-right",
-      cell: (s) => (
-        <div className="flex justify-end gap-2">
-          {s.status === "invited" && (
+      cell: (s) => {
+        // Only the row being activated shows the pending state (not every button).
+        const activating =
+          activateSubAdmin.isPending && activateSubAdmin.variables === s.id;
+        return (
+          <div className="flex justify-end gap-2">
+            {s.status === "invited" && (
+              <Button
+                size="sm"
+                className="gap-1"
+                onClick={() => handleActivate(s)}
+                disabled={activating}
+              >
+                <BadgeCheck className="h-4 w-4" />
+                {activating ? "Activating…" : "Activate"}
+              </Button>
+            )}
             <Button
               size="sm"
-              className="gap-1"
-              onClick={() => handleActivate(s)}
-              disabled={activateSubAdmin.isPending}
+              variant="outline"
+              className="gap-1 text-destructive hover:text-destructive"
+              onClick={() => setRemoveTarget(s)}
             >
-              <BadgeCheck className="h-4 w-4" />
-              Activate
+              <Trash2 className="h-4 w-4" />
+              Remove
             </Button>
-          )}
-          <Button
-            size="sm"
-            variant="outline"
-            className="gap-1 text-destructive hover:text-destructive"
-            onClick={() => setRemoveTarget(s)}
-          >
-            <Trash2 className="h-4 w-4" />
-            Remove
-          </Button>
-        </div>
-      ),
+          </div>
+        );
+      },
     },
   ];
 
@@ -199,29 +201,6 @@ export default function AdminExpertsPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="j.doe@aitt-legal.example"
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="expert-wallet">
-                Wallet <span className="text-muted-foreground">(optional)</span>
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="expert-wallet"
-                  value={wallet}
-                  onChange={(e) => setWallet(e.target.value)}
-                  placeholder="G…"
-                  className="font-mono text-xs"
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="flex-shrink-0 gap-2"
-                  onClick={() => setWallet(fakeWallet())}
-                >
-                  <Wallet className="h-4 w-4" />
-                  Connect
-                </Button>
-              </div>
             </div>
           </div>
           <DialogFooter>

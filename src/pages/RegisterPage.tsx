@@ -29,9 +29,19 @@ export default function RegisterPage() {
       toast.error("Please fill in company name and email");
       return;
     }
-    if (!isMock && !password) {
-      toast.error("Please choose a password so you can sign in once approved");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
+      toast.error("Please enter a valid email address.");
       return;
+    }
+    if (!isMock) {
+      if (password.length < 8) {
+        toast.error("Password must be at least 8 characters long.");
+        return;
+      }
+      if (!/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+        toast.error("Password must include at least one letter and one number.");
+        return;
+      }
     }
     setIsSubmitting(true);
     try {
@@ -111,7 +121,7 @@ export default function RegisterPage() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Choose a password"
+                    placeholder="Min 8 chars, incl. a letter & a number"
                     className="pl-9"
                     disabled={isSubmitting}
                   />
