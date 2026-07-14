@@ -7,7 +7,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { useNavigate } from "@tanstack/react-router";
-import { CheckCircle, MessageSquare, Shield, Upload } from "lucide-react";
+import { CheckCircle, ScrollText, Shield, Upload } from "lucide-react";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -17,33 +17,33 @@ export default function HomePage() {
       icon: Upload,
       title: "Secure Upload",
       description:
-        "Upload your PDF documents with automatic SHA-256 cryptographic hash generation",
-      action: () => navigate({ to: "/library" }),
-      buttonText: "Upload",
+        "Submit your PDF or Word documents with automatic SHA-256 hashing, anchored on-chain.",
+      action: () => navigate({ to: "/company/submit" }),
+      buttonText: "Submit a document",
     },
     {
       icon: Shield,
-      title: "AI Compliance",
+      title: "Compliance Dashboard",
       description:
-        "Analyze your documents for EU or US compliance with automatic AI evaluation",
-      action: () => navigate({ to: "/compliance" }),
-      buttonText: "Dashboard",
+        "Track your submissions through expert legal review and see their compliance scores.",
+      action: () => navigate({ to: "/company" }),
+      buttonText: "Open dashboard",
     },
     {
       icon: CheckCircle,
       title: "Verification",
       description:
-        "Verify the authenticity of any document by comparing its hash",
+        "Verify the authenticity of any certificate by its document hash — public, no login needed.",
       action: () => navigate({ to: "/verification" }),
       buttonText: "Verify",
     },
     {
-      icon: MessageSquare,
-      title: "AI Assistant",
+      icon: ScrollText,
+      title: "Certificate Registry",
       description:
-        "Ask questions about compliance and get personalized recommendations",
-      action: () => navigate({ to: "/ai-assistant" }),
-      buttonText: "Consult",
+        "Browse publicly verifiable AI compliance certificates, each anchored on the blockchain.",
+      action: () => navigate({ to: "/registry" }),
+      buttonText: "Browse registry",
     },
   ];
 
@@ -69,7 +69,7 @@ export default function HomePage() {
             <div className="flex flex-wrap gap-4">
               <Button
                 size="lg"
-                onClick={() => navigate({ to: "/library" })}
+                onClick={() => navigate({ to: "/company/submit" })}
                 className="gap-2"
               >
                 <Upload className="h-5 w-5" />
@@ -78,7 +78,7 @@ export default function HomePage() {
               <Button
                 size="lg"
                 variant="outline"
-                onClick={() => navigate({ to: "/compliance" })}
+                onClick={() => navigate({ to: "/company" })}
               >
                 View Dashboard
               </Button>
