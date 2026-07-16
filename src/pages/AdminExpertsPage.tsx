@@ -36,11 +36,13 @@ export default function AdminExpertsPage() {
   const [inviteOpen, setInviteOpen] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [removeTarget, setRemoveTarget] = useState<SubAdmin | null>(null);
 
   const resetForm = () => {
     setName("");
     setEmail("");
+    setPassword("");
   };
 
   const handleInvite = async () => {
@@ -48,12 +50,21 @@ export default function AdminExpertsPage() {
       toast.error("Please fill in name and email");
       return;
     }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email.trim())) {
+      toast.error("Please enter a valid email address.");
+      return;
+    }
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/[0-9]/.test(password)) {
+      toast.error("Password must be at least 8 characters, incl. a letter and a number.");
+      return;
+    }
     try {
       await inviteSubAdmin.mutateAsync({
         name: name.trim(),
         email: email.trim(),
+        password,
       });
-      toast.success(`Invitation sent to ${name.trim()}`);
+      toast.success(`Expert account created — give them: ${email.trim()} + the password you set`);
       resetForm();
       setInviteOpen(false);
     } catch (err) {
@@ -179,7 +190,8 @@ export default function AdminExpertsPage() {
           <DialogHeader>
             <DialogTitle>Invite legal expert</DialogTitle>
             <DialogDescription>
-              The expert is added as “invited” until they accept.
+              Set a login for the expert, then share the email + password with
+              them. They can sign in once you activate them.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-2">
@@ -202,13 +214,27 @@ export default function AdminExpertsPage() {
                 placeholder="j.doe@aitt-legal.example"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="expert-password">Password</Label>
+              <Input
+                id="expert-password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Min 8 chars, incl. a letter & a number"
+              />
+              <p className="text-xs text-muted-foreground">
+                You set this and give it to the expert — they sign in with this
+                email + password.
+              </p>
+            </div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setInviteOpen(false)}>
               Cancel
             </Button>
             <Button onClick={handleInvite} disabled={inviteSubAdmin.isPending}>
-              {inviteSubAdmin.isPending ? "Inviting…" : "Send invite"}
+              {inviteSubAdmin.isPending ? "Creating…" : "Create expert"}
             </Button>
           </DialogFooter>
         </DialogContent>
