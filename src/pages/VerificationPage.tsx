@@ -37,6 +37,13 @@ export default function VerificationPage() {
   const [result, setResult] = useState<VerifyResult | null>(null);
 
   const handleFileUpload = useCallback(async (file: File) => {
+    const name = file.name.toLowerCase();
+    if (!name.endsWith(".pdf") && !name.endsWith(".doc") && !name.endsWith(".docx")) {
+      toast.error(
+        `"${file.name}" is not a supported document. Only PDF or Word files (.pdf, .doc, .docx) can be verified.`,
+      );
+      return;
+    }
     setIsVerifying(true);
     try {
       const hash = await sha256Hex(file);
@@ -118,6 +125,7 @@ export default function VerificationPage() {
           >
             <input
               type="file"
+              accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
               onChange={handleFileSelect}
               className="hidden"
               id="verify-file-upload"

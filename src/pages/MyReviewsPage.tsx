@@ -9,7 +9,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { ClipboardCheck } from "lucide-react";
 import { useMemo } from "react";
 import { useAuth } from "../context/AuthContext";
-import { useDocuments } from "../hooks/data";
+import { useMyReviews } from "../hooks/data";
 import { DEMO_REVIEWER } from "../mock/identity";
 import type { DocItem, Review } from "../mock/types";
 import { formatDate } from "../mock/utils";
@@ -23,11 +23,11 @@ interface ReviewRow {
 export default function MyReviewsPage() {
   const navigate = useNavigate();
   const { isMock } = useAuth();
-  const { data: documents, isLoading } = useDocuments();
+  const { data: documents, isLoading } = useMyReviews();
 
-  // TODO(integration): the backend exposes no current-user profile/name, so in
-  // real mode we can't filter to "only my reviews" by reviewer name. We show all
-  // reviews on documents the reviewer can access. Needs a /me or reviewer-id.
+  // Real mode: the backend's /documents/mine/reviews already scopes each doc's
+  // reviews to the signed-in reviewer, so every review here is ours. Mock mode
+  // returns all docs, so we still filter to the demo reviewer by name.
   const rows = useMemo<ReviewRow[]>(() => {
     const out: ReviewRow[] = [];
     for (const doc of documents ?? []) {
@@ -64,7 +64,7 @@ export default function MyReviewsPage() {
         subtitle={
           isMock
             ? `Reviews recorded by ${DEMO_REVIEWER}.`
-            : "Reviews recorded across the documents you can access."
+            : "Reviews you've recorded."
         }
         icon={ClipboardCheck}
       />

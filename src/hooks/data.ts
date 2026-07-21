@@ -110,7 +110,42 @@ export function useDocument(id: string | undefined) {
         await sleep();
         return useMockStore.getState().documents.find((d) => d.id === id);
       }
-      return normalizeDocItem(await apiGet<DocItem>(`/documents/${id}`));
+      // Prefer the auth-scoped route (full detail for admins/reviewers and the
+      // owning company). Anonymous users, and companies opening another
+      // company's certificate from the public Registry, aren't allowed there —
+      // fall back to the public certificate-detail endpoint (issued/revoked/
+      // expired certs only) so the Registry link still resolves.
+      try {
+        return normalizeDocItem(await apiGet<DocItem>(`/documents/${id}`));
+      } catch (err) {
+        try {
+          return normalizeDocItem(
+            await apiGet<DocItem>(`/documents/registry/${id}`),
+          );
+        } catch {
+          throw err;
+        }
+      }
+    },
+  });
+}
+
+// Reviews recorded by the signed-in sub-admin ONLY. The backend scopes to the
+// current reviewer, so a fresh/other reviewer never sees another's work. Mock
+// mode returns all docs and the page filters to the demo reviewer.
+export function useMyReviews() {
+  return useQuery({
+    queryKey: ["my-reviews"],
+    queryFn: async (): Promise<DocItem[]> => {
+      if (USE_MOCK) {
+        await sleep();
+        return useMockStore.getState().documents;
+      }
+      const { data } = await apiGetPaginated<DocItem[]>(
+        "/documents/mine/reviews",
+        { query: { limit: LIST_LIMIT } },
+      );
+      return (data ?? []).map(normalizeDocItem);
     },
   });
 }
