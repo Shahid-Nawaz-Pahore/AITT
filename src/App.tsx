@@ -14,14 +14,15 @@ import AdminCompaniesPage from "./pages/AdminCompaniesPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import AdminDocumentsPage from "./pages/AdminDocumentsPage";
 import AdminExpertsPage from "./pages/AdminExpertsPage";
-import AdminFrameworksPage from "./pages/AdminFrameworksPage";
+import AdminComplianceProgramsPage from "./pages/AdminComplianceProgramsPage";
 import CertificatePage from "./pages/CertificatePage";
 import CompanyDashboardPage from "./pages/CompanyDashboardPage";
 import CreateProposalPage from "./pages/CreateProposalPage";
 import DocumentReviewPage from "./pages/DocumentReviewPage";
 import GovernanceDashboardPage from "./pages/GovernanceDashboardPage";
 import GovernanceSettingsPage from "./pages/GovernanceSettingsPage";
-import HomePage from "./pages/HomePage";
+import PublicPortalPage from "./pages/PublicPortalPage";
+import PublicCompanyProfilePage from "./pages/PublicCompanyProfilePage";
 import MonitoringPage from "./pages/MonitoringPage";
 import MyDocumentsPage from "./pages/MyDocumentsPage";
 import MyReviewsPage from "./pages/MyReviewsPage";
@@ -72,7 +73,7 @@ const companyGuard = (Component: () => ReactNode): (() => ReactNode) =>
   ));
 
 // --- Real public screens ---
-const indexRoute = route("/", HomePage);
+const indexRoute = route("/", PublicPortalPage);
 const verificationRoute = route("/verification", VerificationPage);
 
 // --- Auth (Phase 1) ---
@@ -82,6 +83,7 @@ const registerRoute = route("/register", RegisterPage);
 // --- Public + Company (Phase 2) ---
 const registryRoute = route("/registry", RegistryPage);
 const certificateRoute = route("/certificate/$id", CertificatePage);
+const companyProfileRoute = route("/company-profile/$name", PublicCompanyProfilePage);
 const companyRoute = route("/company", companyGuard(CompanyDashboardPage));
 const companySubmitRoute = route("/company/submit", companyGuard(SubmitDocumentPage));
 const companyDocsRoute = route("/company/documents", companyGuard(MyDocumentsPage));
@@ -98,7 +100,9 @@ const adminDocsRoute = route("/admin/documents", guard(["admin"], AdminDocuments
 const adminCompaniesRoute = route("/admin/companies", guard(["admin"], AdminCompaniesPage));
 const adminExpertsRoute = route("/admin/experts", guard(["admin"], AdminExpertsPage));
 const adminCertificatesRoute = route("/admin/certificates", guard(["admin"], AdminCertificatesPage));
-const adminFrameworksRoute = route("/admin/frameworks", guard(["admin"], AdminFrameworksPage));
+const adminProgramsRoute = route("/admin/compliance-programs", guard(["admin"], AdminComplianceProgramsPage));
+// Main Admin can review documents too (shares the sub-admin review screen).
+const adminReviewRoute = route("/admin/review/$id", guard(["admin"], DocumentReviewPage));
 
 // --- Governance (Phase 5) ---
 // NOTE on route precedence: TanStack Router ranks static segments above dynamic
@@ -119,6 +123,7 @@ const routeTree = rootRoute.addChildren([
   registerRoute,
   registryRoute,
   certificateRoute,
+  companyProfileRoute,
   companyRoute,
   companySubmitRoute,
   companyDocsRoute,
@@ -131,7 +136,8 @@ const routeTree = rootRoute.addChildren([
   adminCompaniesRoute,
   adminExpertsRoute,
   adminCertificatesRoute,
-  adminFrameworksRoute,
+  adminProgramsRoute,
+  adminReviewRoute,
   governanceRoute,
   governanceNewRoute,
   governanceSettingsRoute,

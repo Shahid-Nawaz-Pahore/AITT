@@ -40,11 +40,13 @@ const LOCKED_STATUSES = ["issued", "revoked", "expired"];
 
 export default function DocumentReviewPage() {
   const navigate = useNavigate();
-  const { isMock } = useAuth();
+  const { isMock, role } = useAuth();
   const params = useParams({ strict: false });
   const id = (params as { id?: string }).id;
   const { data: doc, isLoading } = useDocument(id);
   const addReview = useAddReview();
+  // The review page is shared by sub-admins (queue) and the Main Admin (docs).
+  const backTo = role === "admin" ? "/admin/documents" : "/expert";
 
   const [comment, setComment] = useState("");
   const [decision, setDecision] = useState<ReviewDecision | "">("");
@@ -67,8 +69,8 @@ export default function DocumentReviewPage() {
           title="Document not found"
           description="This document does not exist or is no longer available."
           action={
-            <Button variant="outline" onClick={() => navigate({ to: "/expert" })}>
-              Back to queue
+            <Button variant="outline" onClick={() => navigate({ to: backTo })}>
+              {role === "admin" ? "Back to documents" : "Back to queue"}
             </Button>
           }
         />
@@ -102,8 +104,12 @@ export default function DocumentReviewPage() {
           txHash: fakeTxHash(),
         },
       });
-      toast.success("Review recorded and anchored on-chain ✓");
-      navigate({ to: "/expert" });
+      toast.success(
+        role === "admin"
+          ? "Review recorded ✓"
+          : "Review recorded and anchored on-chain ✓",
+      );
+      navigate({ to: backTo });
     } catch (err) {
       toast.error(err instanceof ApiError ? err.message : "Could not record review");
     }

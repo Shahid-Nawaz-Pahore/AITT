@@ -1,8 +1,10 @@
 import { DataTable, type Column } from "@/components/shared/DataTable";
 import { OnChainBadge } from "@/components/shared/OnChainBadge";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { ProgramTag } from "@/components/shared/ProgramTag";
 import { ScoreBadge } from "@/components/shared/ScoreBadge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -61,7 +63,7 @@ export default function AdminDocumentsPage() {
       cell: (d) => <span className="font-medium break-words">{d.filename}</span>,
     },
     { header: "Company", cell: (d) => d.company },
-    { header: "Subject", cell: (d) => d.subject },
+    { header: "Program", cell: (d) => <ProgramTag doc={d} /> },
     { header: "Status", cell: (d) => <StatusBadge status={d.status} /> },
     {
       header: "Score",
@@ -79,6 +81,24 @@ export default function AdminDocumentsPage() {
       ),
     },
     { header: "On-chain", cell: (d) => <OnChainBadge txHash={d.txHash} /> },
+    {
+      header: "",
+      cell: (d) =>
+        ["issued", "revoked", "expired"].includes(d.status) ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              navigate({ to: `/admin/review/${d.id}` });
+            }}
+          >
+            Review
+          </Button>
+        ),
+    },
   ];
 
   return (

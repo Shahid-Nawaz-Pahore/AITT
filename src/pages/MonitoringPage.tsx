@@ -31,7 +31,6 @@ import {
   useAddAlert,
   useAlerts,
   useDocuments,
-  useFrameworks,
   useResolveAlert,
 } from "../hooks/data";
 import type { Alert } from "../mock/types";
@@ -67,11 +66,9 @@ export default function MonitoringPage() {
   const navigate = useNavigate();
   const { data: alerts, isLoading } = useAlerts();
   const { data: documents } = useDocuments();
-  const { data: frameworks } = useFrameworks();
   const addAlert = useAddAlert();
   const resolveAlert = useResolveAlert();
 
-  const [framework, setFramework] = useState("");
   const [message, setMessage] = useState("");
   const [severity, setSeverity] = useState<Alert["severity"]>("info");
   const [effectiveDate, setEffectiveDate] = useState("");
@@ -109,12 +106,11 @@ export default function MonitoringPage() {
     try {
       await addAlert.mutateAsync({
         docId: "",
-        message: framework ? `[${framework}] ${message.trim()}` : message.trim(),
+        message: message.trim(),
         dueDate: effectiveDate ? new Date(effectiveDate).toISOString() : nowISO(),
         severity,
       });
       toast.success("Regulatory update published");
-      setFramework("");
       setMessage("");
       setSeverity("info");
       setEffectiveDate("");
@@ -223,21 +219,6 @@ export default function MonitoringPage() {
           </CardHeader>
           <CardContent>
             <form className="space-y-4" onSubmit={handlePublish}>
-              <div className="space-y-2">
-                <Label>Framework (optional)</Label>
-                <Select value={framework} onValueChange={setFramework}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="General" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {(frameworks ?? []).map((f) => (
-                      <SelectItem key={f.id} value={f.name}>
-                        {f.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="reg-message">Update</Label>
                 <Textarea

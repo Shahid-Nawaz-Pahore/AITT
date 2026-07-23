@@ -1,5 +1,6 @@
 import { EmptyState } from "@/components/shared/EmptyState";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { ProgramTag } from "@/components/shared/ProgramTag";
 import { ScoreBadge } from "@/components/shared/ScoreBadge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +39,8 @@ export default function RegistryPage() {
       (d) =>
         d.company.toLowerCase().includes(q) ||
         d.subject.toLowerCase().includes(q) ||
+        (d.program ?? "").toLowerCase().includes(q) ||
+        (d.jurisdiction ?? "").toLowerCase().includes(q) ||
         d.filename.toLowerCase().includes(q),
     );
   }, [documents, search]);
@@ -95,6 +98,10 @@ export default function RegistryPage() {
                   <Building2 className="h-4 w-4 flex-shrink-0" />
                   <span className="break-words">{doc.company}</span>
                 </div>
+                <ProgramTag
+                  doc={doc}
+                  className="inline-flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground"
+                />
               </CardHeader>
               <CardContent className="flex-1 space-y-3">
                 <div className="flex items-center justify-between gap-2">

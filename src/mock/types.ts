@@ -69,6 +69,11 @@ export interface DocItem {
   hash: string; // SHA-256 hex of the file
   txHash?: string; // issuance/anchor tx (simulated)
   complianceScore?: number; // overall 0–100
+  jurisdiction?: Jurisdiction; // EU / US
+  program?: string; // compliance program name (snapshot)
+  programType?: ProgramType; // expert_support / self_service
+  programId?: string;
+  reviewStatus?: ReviewDecision; // latest review decision (public "Review status")
   reviews: Review[];
 }
 
@@ -111,4 +116,24 @@ export interface Framework {
   id: string;
   name: string;
   description: string;
+}
+
+export type ProgramType = "expert_support" | "self_service";
+export type Jurisdiction = "EU" | "US";
+
+export interface ProgramAssignee {
+  id: string;
+  name?: string;
+  email?: string;
+}
+
+export interface ComplianceProgram {
+  id: string;
+  name: string;
+  type: ProgramType;
+  typeLabel: string;
+  jurisdiction: Jurisdiction;
+  description: string;
+  assignedSubAdmins: ProgramAssignee[];
+  archived: boolean;
 }

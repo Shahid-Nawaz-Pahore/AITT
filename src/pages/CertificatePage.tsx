@@ -1,6 +1,7 @@
 import { EmptyState } from "@/components/shared/EmptyState";
 import { OnChainBadge } from "@/components/shared/OnChainBadge";
 import { PageHeader } from "@/components/shared/PageHeader";
+import { ProgramTag } from "@/components/shared/ProgramTag";
 import { ReviewList } from "@/components/shared/ReviewList";
 import { ScoreMeter } from "@/components/shared/ScoreBadge";
 import { StatusBadge } from "@/components/shared/StatusBadge";
@@ -141,6 +142,9 @@ export default function CertificatePage() {
             </MetaRow>
             <MetaRow icon={Building2} label="Company">
               {doc.company}
+            </MetaRow>
+            <MetaRow icon={ScrollText} label="Compliance program & jurisdiction">
+              <ProgramTag doc={doc} />
             </MetaRow>
             <MetaRow icon={Calendar} label="Submitted">
               {formatDate(doc.submittedAt)}

@@ -29,9 +29,12 @@ import { useMockStore } from "../mock/store";
 import type {
   Alert,
   Company,
+  ComplianceProgram,
   DocItem,
   Framework,
   GovernanceConfig,
+  Jurisdiction,
+  ProgramType,
   Proposal,
   ProposalType,
   Review,
@@ -53,6 +56,7 @@ const qk = {
   proposals: ["proposals"] as const,
   proposal: (id?: string) => ["proposals", id] as const,
   frameworks: ["frameworks"] as const,
+  compliancePrograms: ["compliance-programs"] as const,
   governance: ["governance"] as const,
   alerts: ["alerts"] as const,
 };
@@ -205,6 +209,135 @@ export function useFrameworks() {
   });
 }
 
+// ---------------------------------------------------- Compliance Programs ----
+// Admin-managed AITT compliance programs (replace the old Frameworks concept).
+// Only the Main Admin can create/edit/archive/delete or assign sub-admins.
+const PROGRAM_TYPE_LABELS: Record<ProgramType, string> = {
+  expert_support: "Expert Compliance Support",
+  self_service: "Self-Service",
+};
+let mockPrograms: ComplianceProgram[] = [
+  { id: "cp-eu-gov", name: "AI Governance", type: "expert_support", typeLabel: "Expert Compliance Support", jurisdiction: "EU", description: "Governance controls for AI systems.", assignedSubAdmins: [], archived: false },
+  { id: "cp-eu-tra", name: "AI Transparency", type: "self_service", typeLabel: "Self-Service", jurisdiction: "EU", description: "Transparency and disclosure for AI systems.", assignedSubAdmins: [], archived: false },
+  { id: "cp-us-risk", name: "AI Risk Management", type: "self_service", typeLabel: "Self-Service", jurisdiction: "US", description: "Risk identification and mitigation for AI systems.", assignedSubAdmins: [], archived: false },
+];
+
+export function useCompliancePrograms(opts?: { includeArchived?: boolean }) {
+  const includeArchived = opts?.includeArchived ?? false;
+  return useQuery({
+    queryKey: [...qk.compliancePrograms, includeArchived] as const,
+    queryFn: async (): Promise<ComplianceProgram[]> => {
+      if (USE_MOCK) {
+        await sleep();
+        return mockPrograms.filter((p) => includeArchived || !p.archived);
+      }
+      const { data } = await apiGetPaginated<ComplianceProgram[]>("/compliance-programs", {
+        query: { limit: LIST_LIMIT, ...(includeArchived ? { includeArchived: "true" } : {}) },
+      });
+      return data ?? [];
+    },
+  });
+}
+
+export function useCreateProgram() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      name: string;
+      type: ProgramType;
+      jurisdiction: Jurisdiction;
+      description?: string;
+    }): Promise<ComplianceProgram> => {
+      if (USE_MOCK) {
+        await sleep();
+        const p: ComplianceProgram = {
+          id: `cp-${Date.now()}`,
+          name: input.name,
+          type: input.type,
+          typeLabel: PROGRAM_TYPE_LABELS[input.type],
+          jurisdiction: input.jurisdiction,
+          description: input.description ?? "",
+          assignedSubAdmins: [],
+          archived: false,
+        };
+        mockPrograms = [...mockPrograms, p];
+        return p;
+      }
+      return apiPost<ComplianceProgram>("/compliance-programs", input);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.compliancePrograms }),
+  });
+}
+
+export function useUpdateProgram() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({
+      id,
+      input,
+    }: {
+      id: string;
+      input: Partial<{ name: string; type: ProgramType; jurisdiction: Jurisdiction; description: string }>;
+    }) => {
+      if (USE_MOCK) {
+        await sleep();
+        mockPrograms = mockPrograms.map((p) =>
+          p.id === id
+            ? { ...p, ...input, typeLabel: input.type ? PROGRAM_TYPE_LABELS[input.type] : p.typeLabel }
+            : p,
+        );
+        return;
+      }
+      await apiPut(`/compliance-programs/${id}`, input);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.compliancePrograms }),
+  });
+}
+
+export function useArchiveProgram() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, archived }: { id: string; archived: boolean }) => {
+      if (USE_MOCK) {
+        await sleep();
+        mockPrograms = mockPrograms.map((p) => (p.id === id ? { ...p, archived } : p));
+        return;
+      }
+      await apiPost(`/compliance-programs/${id}/archive`, { archived });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.compliancePrograms }),
+  });
+}
+
+export function useDeleteProgram() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      if (USE_MOCK) {
+        await sleep();
+        mockPrograms = mockPrograms.filter((p) => p.id !== id);
+        return;
+      }
+      await apiDelete(`/compliance-programs/${id}`);
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.compliancePrograms }),
+  });
+}
+
+export function useAssignProgramSubAdmins() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, subAdminIds }: { id: string; subAdminIds: string[] }) => {
+      if (USE_MOCK) {
+        await sleep();
+        return;
+      }
+      await apiPost(`/compliance-programs/${id}/assignees`, { subAdminIds });
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: qk.compliancePrograms }),
+  });
+}
+
 export function useCompanies() {
   return useQuery({
     queryKey: qk.companies,
@@ -318,7 +451,8 @@ export function useSubmitDocument() {
   return useMutation({
     mutationFn: async (input: {
       file: File;
-      subject: string;
+      subject?: string;
+      programId?: string;
       filename?: string;
     }): Promise<DocItem> => {
       if (USE_MOCK) {
@@ -327,13 +461,14 @@ export function useSubmitDocument() {
         return useMockStore.getState().submitDocument({
           filename: input.filename ?? input.file.name,
           company: useMockStore.getState().companies[0]?.name ?? "Demo Company",
-          subject: input.subject,
+          subject: input.subject ?? "Compliance Program",
           hash,
         });
       }
       const form = new FormData();
       form.append("file", input.file);
-      form.append("subject", input.subject);
+      if (input.subject) form.append("subject", input.subject);
+      if (input.programId) form.append("programId", input.programId);
       if (input.filename) form.append("filename", input.filename);
       return apiPostForm<DocItem>("/documents", form);
     },

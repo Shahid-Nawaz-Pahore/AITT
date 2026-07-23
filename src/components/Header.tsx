@@ -71,7 +71,7 @@ const NAV_BY_ROLE: Record<Role, NavItem[]> = {
     { path: "/admin/companies", label: "Companies", icon: Building2 },
     { path: "/admin/experts", label: "Sub-Admins", icon: Users },
     { path: "/admin/certificates", label: "Certificates", icon: Award },
-    { path: "/admin/frameworks", label: "Frameworks & Templates", icon: Layers },
+    { path: "/admin/compliance-programs", label: "Compliance Programs", icon: Layers },
     { path: "/admin/governance", label: "Governance", icon: Scale },
     { path: "/admin/monitoring", label: "Monitoring", icon: Activity },
   ],
@@ -114,7 +114,8 @@ export default function Header() {
         <div className="flex min-w-0 items-center gap-6">
           <button
             type="button"
-            onClick={() => navigate({ to: roleHome[role] })}
+            // The logo always returns to the public verification portal (homepage).
+            onClick={() => navigate({ to: "/" })}
             className="-ml-2 flex flex-shrink-0 items-center gap-2 text-lg font-bold text-foreground transition-opacity hover:opacity-80"
           >
             AITT

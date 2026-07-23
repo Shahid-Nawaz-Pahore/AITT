@@ -15,7 +15,7 @@ import { FileCheck2, Upload } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { ApiError } from "../api/types";
-import { useFrameworks, useSubmitDocument } from "../hooks/data";
+import { useCompliancePrograms, useSubmitDocument } from "../hooks/data";
 
 // Only compliance DOCUMENTS may be submitted — no videos, images, archives or apps.
 const ACCEPTED_EXTENSIONS = [".pdf", ".doc", ".docx"];
@@ -51,11 +51,11 @@ function fileRejectionReason(file: File): string | null {
 
 export default function SubmitDocumentPage() {
   const navigate = useNavigate();
-  const { data: frameworks } = useFrameworks();
+  const { data: programs } = useCompliancePrograms();
   const submitDocument = useSubmitDocument();
 
   const [name, setName] = useState("");
-  const [subject, setSubject] = useState("");
+  const [programId, setProgramId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -82,13 +82,15 @@ export default function SubmitDocumentPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return toast.error("Please enter a document name");
-    if (!subject) return toast.error("Please select a compliance subject");
+    if (!programId) return toast.error("Please select a compliance program");
     if (!file) return toast.error("Please attach a PDF or .docx file");
 
+    const program = (programs ?? []).find((p) => p.id === programId);
     try {
       await submitDocument.mutateAsync({
         file,
-        subject,
+        programId,
+        subject: program?.name,
         filename: name.trim(),
       });
       toast.success("Document submitted for review");
@@ -129,15 +131,15 @@ export default function SubmitDocumentPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Compliance subject</Label>
-                <Select value={subject} onValueChange={setSubject} disabled={isBusy}>
+                <Label>Compliance program</Label>
+                <Select value={programId} onValueChange={setProgramId} disabled={isBusy}>
                   <SelectTrigger>
-                    <SelectValue placeholder="Select a framework / subject" />
+                    <SelectValue placeholder="Select a compliance program" />
                   </SelectTrigger>
                   <SelectContent>
-                    {(frameworks ?? []).map((f) => (
-                      <SelectItem key={f.id} value={f.name}>
-                        {f.name}
+                    {(programs ?? []).map((p) => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.jurisdiction === "EU" ? "🇪🇺 EU" : "🇺🇸 US"} · {p.name} ({p.typeLabel})
                       </SelectItem>
                     ))}
                   </SelectContent>
